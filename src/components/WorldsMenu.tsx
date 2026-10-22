@@ -228,7 +228,10 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
     sfx.click();
     setServerModalTarget(world);
     setSrvName(world.serverConfig?.serverName || world.name);
-    setSrvIp(world.serverConfig?.ip || "127.0.0.1");
+    setSrvIp(
+      world.serverConfig?.ip ||
+        `${(getStoredPlayerName() || "steve").toLowerCase().replace(/[^a-z0-9]/g, "") || "steve"}-${Math.floor(1000 + Math.random() * 9000)}.voxel`,
+    );
     setSrvPort(String(world.serverConfig?.port || 19132));
     setSrvIcon(world.serverConfig?.icon || "diamond");
     setSrvMotd(world.serverConfig?.motd || "");
