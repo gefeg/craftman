@@ -66,13 +66,22 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
           {/* Top Logo and Splash */}
           <div className="flex flex-col items-center pt-8 md:pt-12">
             <div className="relative inline-block text-center">
-              {/* 3D Voxel Minecraft Style Title */}
-              <h1 className="mc-bedrock-title text-6xl sm:text-7xl md:text-8xl tracking-wider select-none font-bold">
-                MINECRAFT
-              </h1>
-
-              {/* Minecraft Edition Badge from Resource Pack */}
-              <p className="text-xl sm:text-2xl text-neutral-100 tracking-[0.3em] mt-1 drop-shadow-[2px_2px_0_#000000]">BEDROCK EDITION</p>
+              {/* Official logo textures from the resource pack */}
+              <h1 className="sr-only">Minecraft</h1>
+              <img
+                src="/resourcepack/assets/minecraft/textures/gui/title/minecraft.png"
+                alt="Minecraft"
+                className="w-[min(90vw,640px)] select-none"
+                style={{ imageRendering: "pixelated" }}
+                draggable={false}
+              />
+              <img
+                src="/resourcepack/assets/minecraft/textures/gui/title/edition.png"
+                alt="Edition"
+                className="w-[min(45vw,300px)] mx-auto -mt-[2%] select-none"
+                style={{ imageRendering: "pixelated" }}
+                draggable={false}
+              />
 
               {/* Oscillating Bouncing Splash Text */}
               <div className="absolute -bottom-4 right-0 sm:-right-8 md:-right-12 z-20 mc-splash-text text-xl sm:text-2xl md:text-3xl font-bold text-yellow-300 drop-shadow-[2px_2px_0_#000000]">
