@@ -113,7 +113,15 @@ export class RealtimeSocket {
       config: { broadcast: { self: false }, presence: { key: id } },
     });
     this.channel
-      .on("broadcast", { event: "m" }, ({ payload }) => this.deliver(payload))
+      .on("broadcast", { event: "m" }, ({ payload }) => {
+        const p = payload as { type: string; id?: string };
+        if (p.type === "hello") {
+          this.deliver({ ...p, type: "player_update" });
+          return;
+        }
+        const out = this.filter(p);
+        if (out) this.deliver(out);
+      })
       .on("presence", { event: "sync" }, () => this.syncPresence())
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
