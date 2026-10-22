@@ -68,7 +68,7 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
             <div className="relative inline-block text-center">
               {/* 3D Voxel Minecraft Style Title */}
               <h1 className="mc-bedrock-title text-6xl sm:text-7xl md:text-8xl tracking-wider select-none font-bold">
-                VOXELCRAFT
+                MINECRAFT
               </h1>
 
               {/* Minecraft Edition Badge from Resource Pack */}
@@ -86,12 +86,12 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
             </div>
           </div>
 
-          {/* Center: Column of Main Menu Buttons */}
-          <div className="flex-1 flex flex-col items-center justify-center -mt-6">
-            <div className="flex flex-col gap-3 w-full max-w-[22rem]">
+          {/* Center: Bedrock home buttons */}
+          <div className="flex-1 flex flex-col items-center justify-center -mt-4">
+            <div className="flex flex-col gap-2.5 w-full max-w-[24rem]">
               <button
                 type="button"
-                className="mc-button w-full text-3xl py-3 tracking-wide"
+                className="bedrock-btn bedrock-btn-green text-3xl tracking-wide"
                 onClick={() => {
                   sfx.click();
                   setActiveSubmenu("worlds");
@@ -99,10 +99,9 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
               >
                 Jugar
               </button>
-
               <button
                 type="button"
-                className="mc-button w-full text-3xl py-3 tracking-wide"
+                className="bedrock-btn text-3xl tracking-wide"
                 onClick={() => {
                   sfx.click();
                   setActiveSubmenu("settings");
@@ -110,18 +109,40 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
               >
                 Ajustes
               </button>
-
               <button
                 type="button"
-                className="mc-button w-full text-3xl py-3 tracking-wide"
+                className="bedrock-btn text-3xl tracking-wide"
                 onClick={() => {
                   sfx.click();
                   setActiveSubmenu("profile");
                 }}
               >
-                Perfil / Aspecto
+                Vestidor
               </button>
             </div>
+          </div>
+
+          {/* Bottom-left Bedrock square shortcuts */}
+          <div className="fixed left-6 bottom-16 z-20 flex gap-2 pointer-events-auto">
+            <button
+              type="button"
+              className="bedrock-btn bedrock-square"
+              title="Servidores"
+              onClick={() => {
+                sfx.click();
+                setActiveSubmenu("worlds");
+              }}
+            >
+              🌐
+            </button>
+            <button
+              type="button"
+              className="bedrock-btn bedrock-square"
+              title="Pantalla completa"
+              onClick={toggleFullscreen}
+            >
+              {isFullscreen ? "🗗" : "⛶"}
+            </button>
           </div>
 
           {/* Right Lateral Player Panel (Bedrock Edition Style) */}
@@ -142,7 +163,7 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
               </p>
               <button
                 type="button"
-                className="mc-button w-full text-lg py-1 mt-2 min-w-0"
+                className="bedrock-btn text-lg mt-2"
                 onClick={() => {
                   sfx.click();
                   setActiveSubmenu("profile");
