@@ -14,3 +14,4 @@
 - Game engine is vanilla three.js in src/game (imperative chunk meshing for performance); React only renders HUD/inventory in src/components/Game.tsx. Textures come from the CC0 Kenney atlas in public/textures.
 - Mob gait rotates hip pivots and bobs the complete root, never an isolated torso, so limbs and outer layers remain connected.
 - PackSprite crops imported atlas rectangles for HUD and inventory items; preserve the 3D block icons and custom texture workflow.
+- Multiplayer runs over Lovable Cloud realtime channels (`src/game/mpClient.ts` RealtimeSocket adapter) plus server functions in `src/lib/mpServers.functions.ts` for the public server list, access keys, bans and saved block edits; the old Vite WebSocket plugin only works in dev and is no longer used by the client.
