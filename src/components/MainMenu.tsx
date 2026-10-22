@@ -75,13 +75,7 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
                 style={{ imageRendering: "pixelated" }}
                 draggable={false}
               />
-              <img
-                src="/resourcepack/assets/minecraft/textures/gui/title/edition.png"
-                alt="Edition"
-                className="w-[min(45vw,300px)] mx-auto -mt-[2%] select-none"
-                style={{ imageRendering: "pixelated" }}
-                draggable={false}
-              />
+              <p className="text-2xl sm:text-3xl font-bold text-neutral-100 tracking-[0.25em] -mt-1 drop-shadow-[3px_3px_0_#000]">BEDROCK EDITION</p>
 
               {/* Oscillating Bouncing Splash Text */}
               <div className="absolute -bottom-4 right-0 sm:-right-8 md:-right-12 z-20 mc-splash-text text-xl sm:text-2xl md:text-3xl font-bold text-yellow-300 drop-shadow-[2px_2px_0_#000000]">
