@@ -156,8 +156,8 @@ export function createNewWorldRecord(
 
   const initialInventory: Slot[] = Array(36).fill(null);
   if (gameMode === "creative") {
-    initialInventory[0] = { id: "wooden_pickaxe", count: 1 };
-    initialInventory[1] = { id: "wooden_sword", count: 1 };
+    initialInventory[0] = { id: "wood_pickaxe", count: 1, durability: 59 };
+    initialInventory[1] = { id: "wood_sword", count: 1, durability: 59 };
     initialInventory[2] = { id: "b1", count: 64 }; // Stone
     initialInventory[3] = { id: "b2", count: 64 }; // Dirt
     initialInventory[4] = { id: "b4", count: 64 }; // Wood Planks
@@ -165,7 +165,7 @@ export function createNewWorldRecord(
     initialInventory[6] = { id: "b7", count: 64 }; // Glass
   } else {
     // Survival starter item
-    initialInventory[0] = { id: "wooden_pickaxe", count: 1, durability: 59 };
+    initialInventory[0] = { id: "wood_pickaxe", count: 1, durability: 59 };
     initialInventory[1] = { id: "apple", count: 4 };
   }
 

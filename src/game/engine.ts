@@ -389,7 +389,9 @@ export class Engine {
 
     const worldData = initialWorld?.worldData;
     this.state = {
-      slots: worldData?.inventory ? [...worldData.inventory] : Array(36).fill(null),
+      slots: worldData?.inventory
+        ? worldData.inventory.map((s: Slot) => normalizeSlot(s))
+        : Array(36).fill(null),
       selected: 0,
       cursor: null,
       hp: worldData?.hp ?? 20,
@@ -1280,8 +1282,7 @@ export class Engine {
     const slots = this.state.slots.slice();
     if (nextDur <= 0) {
       slots[i] = null;
-      sfx.brk("glass");
-      sfx.pop();
+      sfx.toolBreak();
       const breakMsg = `¡Tu ${it.name} se ha roto!`;
       this.toast(breakMsg);
       if (this.onChatMessage) {
@@ -1549,8 +1550,8 @@ export class Engine {
     this.state.grid = Array(9).fill(null);
     for (const c of back)
       if (c) {
-        const left = this.give(c.id, c.count);
-        if (left) this.spawnDrop(c.id, left, this.eye());
+        const left = this.give(c.id, c.count, c.durability);
+        if (left) this.spawnDrop(c.id, left, this.eye(), c.durability);
       }
     this.state.ui = "none";
     this.state.station = null;
@@ -1560,8 +1561,9 @@ export class Engine {
   dropHeld() {
     const id = this.held();
     if (!id) return;
+    const dur = this.state.slots[this.state.selected]?.durability;
     this.consumeHeld();
-    const d = this.spawnDrop(id, 1, this.eye().add(this.look().multiplyScalar(0.6)));
+    const d = this.spawnDrop(id, 1, this.eye().add(this.look().multiplyScalar(0.6)), dur);
     d.vel.copy(this.look().multiplyScalar(6));
     d.vel.y += 2;
     d.age = -1;
@@ -1886,13 +1888,14 @@ export class Engine {
       }
   }
 
-  spawnDrop(id: string, count: number, pos: THREE.Vector3): Drop {
+  spawnDrop(id: string, count: number, pos: THREE.Vector3, durability?: number): Drop {
     const mesh = this.itemMesh(id, 0.28);
     mesh.position.copy(pos);
     this.scene.add(mesh);
     const d: Drop = {
       id,
       count,
+      ...(durability !== undefined ? { durability } : {}),
       mesh,
       age: 0,
       pos: pos.clone(),
@@ -1977,7 +1980,13 @@ export class Engine {
   die() {
     this.state.dead = true;
     for (const s of this.state.slots)
-      if (s) this.spawnDrop(s.id, s.count, this.player.pos.clone().add(new THREE.Vector3(0, 1, 0)));
+      if (s)
+        this.spawnDrop(
+          s.id,
+          s.count,
+          this.player.pos.clone().add(new THREE.Vector3(0, 1, 0)),
+          s.durability,
+        );
     this.state.slots = Array(36).fill(null);
     this.safeExitLock();
     this.emit();
@@ -2335,7 +2344,8 @@ export class Engine {
             const heldId = this.held();
             const heldIt = heldId ? ITEMS[heldId] : undefined;
             const durCost = heldIt?.tool === "sword" ? 2 : 1;
-            this.damageHeldTool(durCost);
+            // Like Minecraft, instantly-broken blocks (flowers, grass, torches) don't wear tools
+            if ((BLOCKS[hit.id]?.hardness ?? 0) > 0.05) this.damageHeldTool(durCost);
           }
         }
       } else this.breakProgress = 0;
@@ -2770,7 +2780,7 @@ export class Engine {
       if (d.age > 0.6 && dist < 1.8 && !this.state.dead) {
         d.pos.lerp(new THREE.Vector3(p.x, p.y + 0.6, p.z), 1 - Math.exp(-12 * dt));
         if (dist < 0.8) {
-          const left = this.give(d.id, d.count);
+          const left = this.give(d.id, d.count, d.durability);
           if (left === 0) {
             this.scene.remove(d.mesh);
             this.drops = this.drops.filter((x) => x !== d);
