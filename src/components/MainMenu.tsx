@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MenuPanorama } from "./MenuPanorama";
 import { BedrockPlayerPreview } from "./BedrockPlayerPreview";
-import { WorldsMenu } from "./WorldsMenu";
+import { WorldsMenu, type JoinInfo } from "./WorldsMenu";
 import { SettingsMenu } from "./SettingsMenu";
 import { ProfileModal } from "./ProfileModal";
 import { getStoredPlayerName, getStoredCustomSkin } from "@/game/skinStorage";
@@ -26,7 +26,7 @@ const SPLASHES = [
 
 interface MainMenuProps {
   onStartWorld: (world: WorldRecord) => void;
-  onJoinServer?: (roomCode: string, name: string) => void;
+  onJoinServer?: (roomCode: string, name: string, info?: JoinInfo) => void;
 }
 
 export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
@@ -178,7 +178,7 @@ export function MainMenu({ onStartWorld, onJoinServer }: MainMenuProps) {
       {activeSubmenu === "worlds" && (
         <WorldsMenu
           onSelectWorld={(world) => onStartWorld(world)}
-          onJoinServer={(room, name) => onJoinServer?.(room, name)}
+          onJoinServer={(room, name, info) => onJoinServer?.(room, name, info)}
           onBack={() => setActiveSubmenu("none")}
         />
       )}

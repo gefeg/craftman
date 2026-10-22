@@ -754,6 +754,77 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
               )}
             </div>
 
+            {/* Section: Public servers from everyone */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-2xl font-bold text-emerald-300 tracking-wide flex items-center gap-2">
+                  <span>🌍</span> SERVIDORES PÚBLICOS
+                </h3>
+                <button
+                  type="button"
+                  className="mc-badge-btn text-base px-3 py-1"
+                  onClick={() => {
+                    sfx.click();
+                    refreshPublic();
+                  }}
+                >
+                  ⟳ Actualizar
+                </button>
+              </div>
+              {publicServers.length === 0 ? (
+                <div className="bg-[#202020] border-2 border-black/30 p-6 text-center text-neutral-400 text-lg">
+                  Todavía no hay servidores públicos. ¡Crea el primero desde la pestaña Mundos!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {publicServers.map((ps) => {
+                    const online = isOnline(ps);
+                    const mine = !!getOwnerToken(ps.address);
+                    return (
+                      <div
+                        key={ps.address}
+                        className="flex flex-col sm:flex-row items-stretch justify-between bg-[#242424] hover:bg-[#2b2b2b] border-2 border-black/50 p-3 gap-3"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <div className="w-16 h-16 bg-[#181818] border-2 border-black/40 flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
+                            <ServerIcon icon={ps.icon} className="w-full h-full" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-2xl font-bold text-white tracking-wide truncate">
+                              {ps.name}
+                              {ps.has_password && <span className="ml-2 text-amber-300">🔒</span>}
+                            </h4>
+                            {ps.motd && <p className="text-base text-neutral-300 truncate">{ps.motd}</p>}
+                            <div className="flex flex-wrap items-center gap-2 text-base mt-0.5">
+                              <span className="font-mono text-cyan-300 bg-black/40 px-2">{ps.address}</span>
+                              <span className={online ? "text-emerald-400 font-bold" : "text-neutral-500"}>
+                                {online ? "● En línea" : "○ Desconectado"}
+                              </span>
+                              <span className="text-neutral-400 text-sm">
+                                · Dueño: {ps.owner_name}
+                                {mine ? " (tú)" : ""}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={joinBusy}
+                          className="mc-button text-2xl py-2 px-6 min-w-0 bg-[#3a752a] text-white self-center"
+                          onClick={() => {
+                            sfx.click();
+                            handlePublicJoin(ps.address, ps.name);
+                          }}
+                        >
+                          ▶ Entrar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Section 2: Servidores Guardados / Externos */}
             {externalServers.length > 0 && (
               <div>
@@ -984,7 +1055,61 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
             </div>
 
             <div>
+              <label className="block text-xl font-bold text-white mb-1">Mensaje (MOTD):</label>
+              <input
+                type="text"
+                maxLength={80}
+                value={srvMotd}
+                onChange={(e) => setSrvMotd(e.target.value)}
+                className="mc-input-field text-xl"
+                placeholder="¡Bienvenidos a mi servidor!"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xl font-bold text-white mb-1">
+                Clave de acceso (opcional):
+              </label>
+              <input
+                type="text"
+                maxLength={64}
+                value={srvPassword}
+                onChange={(e) => setSrvPassword(e.target.value)}
+                className="mc-input-field text-xl font-mono"
+                placeholder="Déjala vacía para que entre cualquiera"
+              />
+              <p className="text-sm text-neutral-400 mt-1">
+                El servidor aparecerá en la lista pública. Solo entrarán quienes conozcan la clave.
+              </p>
+            </div>
+
+            {srvError && (
+              <div className="p-2 bg-red-900/60 border border-red-500 text-red-200 text-base font-bold">
+                ⚠️ {srvError}
+              </div>
+            )}
+
+            <div>
               <label className="block text-xl font-bold text-white mb-1">Icono del servidor:</label>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-16 h-16 bg-[#181818] border-2 border-black/50 text-3xl overflow-hidden flex items-center justify-center">
+                  <ServerIcon icon={srvIcon} className="w-full h-full" />
+                </div>
+                <button
+                  type="button"
+                  className="mc-button text-lg py-1 px-4 min-w-0"
+                  onClick={() => iconFileRef.current?.click()}
+                >
+                  📁 Subir imagen desde mi dispositivo
+                </button>
+                <input
+                  ref={iconFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleUploadIcon(e, setSrvIcon)}
+                />
+              </div>
               <div className="grid grid-cols-5 gap-2">
                 {SERVER_ICONS.map((ic) => (
                   <button
@@ -1022,8 +1147,9 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 type="button"
                 className="mc-button text-xl py-2 px-8 min-w-0 bg-[#2b6a3a] text-white font-bold"
                 onClick={handleSaveWorldAsServer}
+                disabled={srvSaving}
               >
-                ✓ Guardar y Mover a Servidores
+                {srvSaving ? "Publicando..." : "✓ Publicar servidor"}
               </button>
             </div>
           </div>
@@ -1100,7 +1226,41 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
             </div>
 
             <div>
+              <label className="block text-xl font-bold text-white mb-1">Clave de acceso:</label>
+              <input
+                type="password"
+                maxLength={64}
+                value={joinPassword}
+                onChange={(e) => {
+                  setJoinPassword(e.target.value);
+                  setJoinError(null);
+                }}
+                className="mc-input-field text-xl font-mono"
+                placeholder="Si el servidor tiene clave"
+              />
+            </div>
+
+            <div>
               <label className="block text-xl font-bold text-white mb-1">Icono de guardado:</label>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-14 h-14 bg-[#181818] border-2 border-black/50 text-2xl overflow-hidden flex items-center justify-center">
+                  <ServerIcon icon={joinIcon} className="w-full h-full" />
+                </div>
+                <button
+                  type="button"
+                  className="mc-button text-lg py-1 px-4 min-w-0"
+                  onClick={() => joinIconFileRef.current?.click()}
+                >
+                  📁 Subir imagen
+                </button>
+                <input
+                  ref={joinIconFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleUploadIcon(e, setJoinIcon)}
+                />
+              </div>
               <div className="grid grid-cols-5 gap-2">
                 {SERVER_ICONS.map((ic) => (
                   <button
@@ -1138,11 +1298,67 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 type="button"
                 className="mc-button text-xl py-2 px-8 min-w-0 bg-[#3a752a] text-white font-bold"
                 onClick={handleJoinExternalSubmit}
+                disabled={joinBusy}
               >
-                ▶ Entrar al Servidor
+                {joinBusy ? "Conectando..." : "▶ Entrar al Servidor"}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {pwPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75"
+          onClick={() => setPwPrompt(null)}
+        >
+          <form
+            className="w-full max-w-md bg-[#252525] border-3 border-[#1a1a1a] p-6 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              sfx.click();
+              const err = await attemptJoin(pwPrompt.address, pwValue);
+              if (err) setJoinError(err);
+              else setPwPrompt(null);
+            }}
+          >
+            <h3 className="text-3xl font-bold text-white">🔒 {pwPrompt.name}</h3>
+            <p className="text-lg text-neutral-300">Este servidor necesita una clave de acceso.</p>
+            {joinError && (
+              <div className="p-2 bg-red-900/60 border border-red-500 text-red-200 font-bold">
+                ⚠️ {joinError}
+              </div>
+            )}
+            <input
+              autoFocus
+              type="password"
+              maxLength={64}
+              value={pwValue}
+              onChange={(e) => {
+                setPwValue(e.target.value);
+                setJoinError(null);
+              }}
+              className="mc-input-field text-xl font-mono"
+              placeholder="Clave de acceso"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="mc-button text-xl py-2 px-6 min-w-0 bg-[#444444]"
+                onClick={() => setPwPrompt(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={joinBusy}
+                className="mc-button text-xl py-2 px-8 min-w-0 bg-[#3a752a] text-white font-bold"
+              >
+                {joinBusy ? "Conectando..." : "▶ Entrar"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
