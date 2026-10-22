@@ -91,6 +91,8 @@ interface Mob extends Body {
 interface Drop extends Body {
   id: string;
   count: number;
+  /** Remaining durability of a dropped tool, kept when picked up again. */
+  durability?: number;
   mesh: THREE.Object3D;
   age: number;
 }
@@ -1472,14 +1474,17 @@ export class Engine {
     return matchGrid(this.state.grid, this.state.station);
   }
   takeResult() {
-    const r = this.gridResult();
+    const r = this.gridResult() as (Recipe & { durability?: number }) | null;
     if (!r) return;
     const c = this.state.cursor;
     const initialDur = ITEMS[r.out]?.durability;
+    // Tools don't stack: the cursor must be empty; other items must match and fit
+    if (c && (initialDur !== undefined || c.id !== r.out || c.count + r.count > stack(r.out))) return;
+    const dur = r.durability ?? initialDur;
     this.state.cursor = {
       id: r.out,
       count: (c?.count ?? 0) + r.count,
-      ...(initialDur !== undefined ? { durability: initialDur } : {}),
+      ...(dur !== undefined ? { durability: dur } : {}),
     };
     const grid = this.state.grid.slice();
     if (this.state.station === "furnace") {
