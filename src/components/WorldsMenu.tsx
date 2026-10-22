@@ -165,8 +165,9 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
         blocks: res.blocks,
       });
       return null;
-    } catch {
-      return "No se pudo conectar. Revisa tu conexión.";
+    } catch (e) {
+      console.error("joinServer failed", e);
+      return `No se pudo conectar al servidor (${e instanceof Error ? e.message : "error"}). Inténtalo de nuevo.`;
     } finally {
       setJoinBusy(false);
     }
@@ -239,6 +240,15 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
     setSrvError(null);
   };
 
+  const handleNewServer = async () => {
+    sfx.click();
+    const name = `Servidor de ${getStoredPlayerName() || "Steve"}`;
+    const world = createNewWorldRecord(name, "survival");
+    await saveWorld(world);
+    await loadData();
+    handleOpenServerModal(world);
+  };
+
   const handleSaveWorldAsServer = async () => {
     if (!serverModalTarget) return;
     sfx.click();
@@ -283,8 +293,9 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
         }).catch(() => {});
       }
       savePassword(addr, srvPassword);
-    } catch {
-      setSrvError("No se pudo conectar. Revisa tu conexión.");
+    } catch (e) {
+      console.error("registerServer failed", e);
+      setSrvError(`No se pudo publicar (${e instanceof Error ? e.message : "error"}). Inténtalo de nuevo.`);
       return;
     } finally {
       setSrvSaving(false);
@@ -630,9 +641,17 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 </p>
               </div>
 
+              <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="mc-button text-2xl py-2 px-6 bg-[#3a752a] hover:bg-[#488e35] text-white font-bold"
+                className="mc-button text-2xl py-2 px-6 font-bold"
+                onClick={handleNewServer}
+              >
+                + Crear servidor
+              </button>
+              <button
+                type="button"
+                className="mc-button text-2xl py-2 px-6 font-bold"
                 onClick={() => {
                   sfx.click();
                   setShowJoinModal(true);
@@ -640,6 +659,7 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
               >
                 + Unirse a Servidor (IP y Puerto)
               </button>
+              </div>
             </div>
 
             {/* Section 1: Mundos Configurados como Servidor */}
@@ -991,12 +1011,12 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
           onClick={() => setServerModalTarget(null)}
         >
           <div
-            className="w-full max-w-lg bg-[#252a30] border-3 border-cyan-800 shadow-[inset_2px_2px_0_#4a5a6a,inset_-2px_-2px_0_#10151a,0_10px_35px_rgba(0,0,0,0.85)] p-6 space-y-4"
+            className="mc-bedrock-panel w-full max-w-xl max-h-[92vh] overflow-y-auto p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b-2 border-black/40 pb-2">
-              <h3 className="text-3xl font-bold text-cyan-200 tracking-wide flex items-center gap-2">
-                <span>⚙️</span> CONFIGURAR COMO SERVIDOR
+              <h3 className="text-3xl font-bold text-white tracking-wide drop-shadow-[2px_2px_0_#000]">
+                {serverModalTarget.isServer ? "EDITAR SERVIDOR" : "AÑADIR SERVIDOR"}
               </h3>
               <button
                 type="button"

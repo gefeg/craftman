@@ -819,3 +819,13 @@
     font-size: 1.5rem;
   }
 }
+
+/* Bedrock-style dialog using the resource pack menu textures */
+.mc-bedrock-panel {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+    url("/resourcepack/assets/minecraft/textures/gui/menu_background.png");
+  background-size: auto, 64px 64px;
+  image-rendering: pixelated;
+  border: 3px solid #000;
+  box-shadow: inset 3px 3px 0 #6b6b6b, inset -3px -3px 0 #1e1e1e, 0 12px 40px rgba(0, 0, 0, 0.85);
+}
