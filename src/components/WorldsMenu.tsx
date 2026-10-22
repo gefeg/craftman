@@ -18,6 +18,46 @@ import {
 } from "@/game/worldsDb";
 import { sfx } from "@/game/audio";
 import { getStoredPlayerName } from "@/game/skinStorage";
+import {
+  getOwnerToken,
+  getSavedPassword,
+  savePassword,
+  listPublicServers,
+  isOnline,
+  fileToServerIcon,
+  isImageIcon,
+  normAddr,
+  type PublicServer,
+} from "@/game/mpClient";
+import { registerServer, unregisterServer, joinServer } from "@/lib/mpServers.functions";
+
+export interface JoinInfo {
+  seed: number;
+  name: string;
+  icon: string;
+  password: string;
+  ownerName: string;
+  isOwner: boolean;
+  blocks: { x: number; y: number; z: number; id: number }[];
+}
+
+export function serverAddress(cfg: { ip: string; port: number }): string {
+  return normAddr(cfg.port ? `${cfg.ip}:${cfg.port}` : cfg.ip);
+}
+
+export function ServerIcon({ icon, className = "" }: { icon?: string; className?: string }) {
+  if (isImageIcon(icon)) {
+    return (
+      <img
+        src={icon}
+        alt="Icono del servidor"
+        className={`object-cover ${className}`}
+        style={{ imageRendering: "pixelated" }}
+      />
+    );
+  }
+  return <span className={`flex items-center justify-center ${className}`}>{getServerIconEmoji(icon)}</span>;
+}
 
 export const SERVER_ICONS = [
   { id: "diamond", emoji: "💎", label: "Diamante" },
@@ -39,7 +79,7 @@ export function getServerIconEmoji(iconId?: string): string {
 
 interface WorldsMenuProps {
   onSelectWorld: (world: WorldRecord) => void;
-  onJoinServer?: (roomCode: string, name: string) => void;
+  onJoinServer?: (roomCode: string, name: string, info?: JoinInfo) => void;
   onBack: () => void;
 }
 
@@ -64,6 +104,19 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
   const [srvIp, setSrvIp] = useState("127.0.0.1");
   const [srvPort, setSrvPort] = useState("19132");
   const [srvIcon, setSrvIcon] = useState("diamond");
+  const [srvPassword, setSrvPassword] = useState("");
+  const [srvMotd, setSrvMotd] = useState("");
+  const [srvError, setSrvError] = useState<string | null>(null);
+  const [srvSaving, setSrvSaving] = useState(false);
+  const iconFileRef = useRef<HTMLInputElement>(null);
+  const joinIconFileRef = useRef<HTMLInputElement>(null);
+
+  // Public servers
+  const [publicServers, setPublicServers] = useState<PublicServer[]>([]);
+  const [pwPrompt, setPwPrompt] = useState<{ address: string; name: string } | null>(null);
+  const [pwValue, setPwValue] = useState("");
+  const [joinBusy, setJoinBusy] = useState(false);
+  const [joinPassword, setJoinPassword] = useState("");
 
   // Join external server modal state (ONLY IP and Port)
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -71,6 +124,67 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
   const [joinPort, setJoinPort] = useState("19132");
   const [joinIcon, setJoinIcon] = useState("grass");
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  const refreshPublic = async () => {
+    try {
+      setPublicServers(await listPublicServers());
+    } catch {
+      /* offline */
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== "servers") return;
+    refreshPublic();
+    const iv = setInterval(refreshPublic, 15000);
+    return () => clearInterval(iv);
+  }, [activeTab]);
+
+  /** Validate access key on the server then enter the world. Returns an error message or null. */
+  const attemptJoin = async (address: string, password: string): Promise<string | null> => {
+    const addr = normAddr(address);
+    setJoinBusy(true);
+    try {
+      const res = await joinServer({
+        data: {
+          address: addr,
+          password,
+          ownerToken: getOwnerToken(addr),
+          playerName: getStoredPlayerName(),
+        },
+      });
+      if (!res.ok) return res.error;
+      savePassword(addr, password);
+      onJoinServer?.(addr, getStoredPlayerName(), {
+        seed: res.seed,
+        name: res.name,
+        icon: res.icon,
+        password,
+        ownerName: res.ownerName,
+        isOwner: res.isOwner,
+        blocks: res.blocks,
+      });
+      return null;
+    } catch {
+      return "No se pudo conectar. Revisa tu conexión.";
+    } finally {
+      setJoinBusy(false);
+    }
+  };
+
+  const handleUploadIcon = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    set: (v: string) => void,
+  ) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      set(await fileToServerIcon(f));
+    } catch {
+      setSrvError("No se pudo leer la imagen");
+    }
+  };
 
   const importFileRef = useRef<HTMLInputElement>(null);
 
@@ -100,6 +214,11 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
   const handleDelete = async (id: string) => {
     sfx.click();
+    const w = worlds.find((x) => x.id === id);
+    if (w?.isServer && w.serverConfig) {
+      const addr = serverAddress(w.serverConfig);
+      unregisterServer({ data: { address: addr, ownerToken: getOwnerToken(addr) } }).catch(() => {});
+    }
     await deleteWorld(id);
     setDeleteTarget(null);
     await loadData();
@@ -109,9 +228,15 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
     sfx.click();
     setServerModalTarget(world);
     setSrvName(world.serverConfig?.serverName || world.name);
-    setSrvIp(world.serverConfig?.ip || "127.0.0.1");
+    setSrvIp(
+      world.serverConfig?.ip ||
+        `${(getStoredPlayerName() || "steve").toLowerCase().replace(/[^a-z0-9]/g, "") || "steve"}-${Math.floor(1000 + Math.random() * 9000)}.voxel`,
+    );
     setSrvPort(String(world.serverConfig?.port || 19132));
     setSrvIcon(world.serverConfig?.icon || "diamond");
+    setSrvMotd(world.serverConfig?.motd || "");
+    setSrvPassword(world.serverConfig ? getSavedPassword(serverAddress(world.serverConfig)) : "");
+    setSrvError(null);
   };
 
   const handleSaveWorldAsServer = async () => {
@@ -126,11 +251,47 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
       port: cleanPort,
       icon: srvIcon,
       serverName: cleanName,
+      motd: srvMotd.trim(),
       isOwner: true,
       ownerName: getStoredPlayerName(),
     };
+    const addr = serverAddress(config);
+    setSrvSaving(true);
+    setSrvError(null);
+    try {
+      const res = await registerServer({
+        data: {
+          address: addr,
+          name: cleanName,
+          motd: config.motd,
+          icon: srvIcon,
+          seed: serverModalTarget.seed,
+          ownerName: getStoredPlayerName(),
+          ownerToken: getOwnerToken(addr, true),
+          password: srvPassword,
+        },
+      });
+      if (!res.ok) {
+        setSrvError(res.error || "No se pudo publicar el servidor");
+        return;
+      }
+      // address changed: remove the old public entry
+      const prev = serverModalTarget.serverConfig;
+      if (prev && serverAddress(prev) !== addr && getOwnerToken(serverAddress(prev))) {
+        unregisterServer({
+          data: { address: serverAddress(prev), ownerToken: getOwnerToken(serverAddress(prev)) },
+        }).catch(() => {});
+      }
+      savePassword(addr, srvPassword);
+    } catch {
+      setSrvError("No se pudo conectar. Revisa tu conexión.");
+      return;
+    } finally {
+      setSrvSaving(false);
+    }
 
     await convertWorldToServer(serverModalTarget.id, config);
+    refreshPublic();
     setServerModalTarget(null);
     await loadData();
     setActiveTab("servers");
@@ -138,11 +299,15 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
   const handleRevertServer = async (world: WorldRecord) => {
     sfx.click();
+    if (world.serverConfig) {
+      const addr = serverAddress(world.serverConfig);
+      unregisterServer({ data: { address: addr, ownerToken: getOwnerToken(addr) } }).catch(() => {});
+    }
     await revertServerToWorld(world.id);
     await loadData();
   };
 
-  const handleJoinExternalSubmit = () => {
+  const handleJoinExternalSubmit = async () => {
     const cleanIp = joinIp.trim();
     const cleanPort = parseInt(joinPort.trim(), 10);
     if (!cleanIp) {
@@ -156,6 +321,11 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
     sfx.click();
     setJoinError(null);
+    const err = await attemptJoin(`${cleanIp}:${cleanPort}`, joinPassword);
+    if (err) {
+      setJoinError(err);
+      return;
+    }
     saveExternalServer({
       ip: cleanIp,
       port: cleanPort,
@@ -163,20 +333,22 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
       name: `Servidor ${cleanIp}:${cleanPort}`,
     });
 
-    const roomAddress = `${cleanIp}:${cleanPort}`;
-    const playerName = getStoredPlayerName();
     setShowJoinModal(false);
-    if (onJoinServer) {
-      onJoinServer(roomAddress, playerName);
-    }
   };
 
-  const handleConnectDirectly = (ip: string, port: number) => {
+  const handleConnectDirectly = async (ip: string, port: number) => {
     sfx.click();
-    const roomAddress = `${ip}:${port}`;
-    const playerName = getStoredPlayerName();
-    if (onJoinServer) {
-      onJoinServer(roomAddress, playerName);
+    await handlePublicJoin(normAddr(port ? `${ip}:${port}` : ip), `${ip}:${port}`);
+  };
+
+  const handlePublicJoin = async (address: string, name: string) => {
+    const saved = getSavedPassword(address);
+    const err = await attemptJoin(address, saved);
+    if (err && /clave/i.test(err)) {
+      setPwValue("");
+      setPwPrompt({ address, name });
+    } else if (err) {
+      alert(err);
     }
   };
 
@@ -496,7 +668,6 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 <div className="grid grid-cols-1 gap-3">
                   {serverWorlds.map((w) => {
                     const cfg = w.serverConfig;
-                    const iconEmoji = getServerIconEmoji(cfg?.icon);
                     return (
                       <div
                         key={w.id}
@@ -504,8 +675,8 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                       >
                         {/* Left: Icon & Info */}
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-20 h-20 bg-[#161a1f] border-2 border-cyan-700/60 flex items-center justify-center text-4xl shadow-inner flex-shrink-0">
-                            {iconEmoji}
+                          <div className="w-20 h-20 bg-[#161a1f] border-2 border-cyan-700/60 flex items-center justify-center text-4xl shadow-inner flex-shrink-0 overflow-hidden">
+                            <ServerIcon icon={cfg?.icon} className="w-full h-full" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
@@ -521,8 +692,11 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                                 {cfg?.ip || "127.0.0.1"}:{cfg?.port || 19132}
                               </span>
                               <span className="text-emerald-400 font-bold">
-                                ● Listo para hospedar
+                                ● Público
                               </span>
+                              {cfg && getSavedPassword(serverAddress(cfg)) && (
+                                <span className="text-amber-300 font-bold">🔒 Con clave</span>
+                              )}
                               <span className="text-neutral-400 text-sm">
                                 · {formatDate(w.lastPlayed)}
                               </span>
@@ -583,6 +757,77 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
               )}
             </div>
 
+            {/* Section: Public servers from everyone */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-2xl font-bold text-emerald-300 tracking-wide flex items-center gap-2">
+                  <span>🌍</span> SERVIDORES PÚBLICOS
+                </h3>
+                <button
+                  type="button"
+                  className="mc-badge-btn text-base px-3 py-1"
+                  onClick={() => {
+                    sfx.click();
+                    refreshPublic();
+                  }}
+                >
+                  ⟳ Actualizar
+                </button>
+              </div>
+              {publicServers.length === 0 ? (
+                <div className="bg-[#202020] border-2 border-black/30 p-6 text-center text-neutral-400 text-lg">
+                  Todavía no hay servidores públicos. ¡Crea el primero desde la pestaña Mundos!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {publicServers.map((ps) => {
+                    const online = isOnline(ps);
+                    const mine = !!getOwnerToken(ps.address);
+                    return (
+                      <div
+                        key={ps.address}
+                        className="flex flex-col sm:flex-row items-stretch justify-between bg-[#242424] hover:bg-[#2b2b2b] border-2 border-black/50 p-3 gap-3"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <div className="w-16 h-16 bg-[#181818] border-2 border-black/40 flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
+                            <ServerIcon icon={ps.icon} className="w-full h-full" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-2xl font-bold text-white tracking-wide truncate">
+                              {ps.name}
+                              {ps.has_password && <span className="ml-2 text-amber-300">🔒</span>}
+                            </h4>
+                            {ps.motd && <p className="text-base text-neutral-300 truncate">{ps.motd}</p>}
+                            <div className="flex flex-wrap items-center gap-2 text-base mt-0.5">
+                              <span className="font-mono text-cyan-300 bg-black/40 px-2">{ps.address}</span>
+                              <span className={online ? "text-emerald-400 font-bold" : "text-neutral-500"}>
+                                {online ? "● En línea" : "○ Desconectado"}
+                              </span>
+                              <span className="text-neutral-400 text-sm">
+                                · Dueño: {ps.owner_name}
+                                {mine ? " (tú)" : ""}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={joinBusy}
+                          className="mc-button text-2xl py-2 px-6 min-w-0 bg-[#3a752a] text-white self-center"
+                          onClick={() => {
+                            sfx.click();
+                            handlePublicJoin(ps.address, ps.name);
+                          }}
+                        >
+                          ▶ Entrar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Section 2: Servidores Guardados / Externos */}
             {externalServers.length > 0 && (
               <div>
@@ -598,7 +843,7 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                     >
                       <div className="flex items-center gap-4 flex-1">
                         <div className="w-16 h-16 bg-[#181818] border-2 border-black/40 flex items-center justify-center text-3xl flex-shrink-0">
-                          {getServerIconEmoji(srv.icon)}
+                          <ServerIcon icon={srv.icon} className="w-full h-full" />
                         </div>
                         <div>
                           <h4 className="text-2xl font-bold text-white tracking-wide">
@@ -813,7 +1058,61 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
             </div>
 
             <div>
+              <label className="block text-xl font-bold text-white mb-1">Mensaje (MOTD):</label>
+              <input
+                type="text"
+                maxLength={80}
+                value={srvMotd}
+                onChange={(e) => setSrvMotd(e.target.value)}
+                className="mc-input-field text-xl"
+                placeholder="¡Bienvenidos a mi servidor!"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xl font-bold text-white mb-1">
+                Clave de acceso (opcional):
+              </label>
+              <input
+                type="text"
+                maxLength={64}
+                value={srvPassword}
+                onChange={(e) => setSrvPassword(e.target.value)}
+                className="mc-input-field text-xl font-mono"
+                placeholder="Déjala vacía para que entre cualquiera"
+              />
+              <p className="text-sm text-neutral-400 mt-1">
+                El servidor aparecerá en la lista pública. Solo entrarán quienes conozcan la clave.
+              </p>
+            </div>
+
+            {srvError && (
+              <div className="p-2 bg-red-900/60 border border-red-500 text-red-200 text-base font-bold">
+                ⚠️ {srvError}
+              </div>
+            )}
+
+            <div>
               <label className="block text-xl font-bold text-white mb-1">Icono del servidor:</label>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-16 h-16 bg-[#181818] border-2 border-black/50 text-3xl overflow-hidden flex items-center justify-center">
+                  <ServerIcon icon={srvIcon} className="w-full h-full" />
+                </div>
+                <button
+                  type="button"
+                  className="mc-button text-lg py-1 px-4 min-w-0"
+                  onClick={() => iconFileRef.current?.click()}
+                >
+                  📁 Subir imagen desde mi dispositivo
+                </button>
+                <input
+                  ref={iconFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleUploadIcon(e, setSrvIcon)}
+                />
+              </div>
               <div className="grid grid-cols-5 gap-2">
                 {SERVER_ICONS.map((ic) => (
                   <button
@@ -851,8 +1150,9 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 type="button"
                 className="mc-button text-xl py-2 px-8 min-w-0 bg-[#2b6a3a] text-white font-bold"
                 onClick={handleSaveWorldAsServer}
+                disabled={srvSaving}
               >
-                ✓ Guardar y Mover a Servidores
+                {srvSaving ? "Publicando..." : "✓ Publicar servidor"}
               </button>
             </div>
           </div>
@@ -929,7 +1229,41 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
             </div>
 
             <div>
+              <label className="block text-xl font-bold text-white mb-1">Clave de acceso:</label>
+              <input
+                type="password"
+                maxLength={64}
+                value={joinPassword}
+                onChange={(e) => {
+                  setJoinPassword(e.target.value);
+                  setJoinError(null);
+                }}
+                className="mc-input-field text-xl font-mono"
+                placeholder="Si el servidor tiene clave"
+              />
+            </div>
+
+            <div>
               <label className="block text-xl font-bold text-white mb-1">Icono de guardado:</label>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-14 h-14 bg-[#181818] border-2 border-black/50 text-2xl overflow-hidden flex items-center justify-center">
+                  <ServerIcon icon={joinIcon} className="w-full h-full" />
+                </div>
+                <button
+                  type="button"
+                  className="mc-button text-lg py-1 px-4 min-w-0"
+                  onClick={() => joinIconFileRef.current?.click()}
+                >
+                  📁 Subir imagen
+                </button>
+                <input
+                  ref={joinIconFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleUploadIcon(e, setJoinIcon)}
+                />
+              </div>
               <div className="grid grid-cols-5 gap-2">
                 {SERVER_ICONS.map((ic) => (
                   <button
@@ -967,11 +1301,67 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 type="button"
                 className="mc-button text-xl py-2 px-8 min-w-0 bg-[#3a752a] text-white font-bold"
                 onClick={handleJoinExternalSubmit}
+                disabled={joinBusy}
               >
-                ▶ Entrar al Servidor
+                {joinBusy ? "Conectando..." : "▶ Entrar al Servidor"}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {pwPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75"
+          onClick={() => setPwPrompt(null)}
+        >
+          <form
+            className="w-full max-w-md bg-[#252525] border-3 border-[#1a1a1a] p-6 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              sfx.click();
+              const err = await attemptJoin(pwPrompt.address, pwValue);
+              if (err) setJoinError(err);
+              else setPwPrompt(null);
+            }}
+          >
+            <h3 className="text-3xl font-bold text-white">🔒 {pwPrompt.name}</h3>
+            <p className="text-lg text-neutral-300">Este servidor necesita una clave de acceso.</p>
+            {joinError && (
+              <div className="p-2 bg-red-900/60 border border-red-500 text-red-200 font-bold">
+                ⚠️ {joinError}
+              </div>
+            )}
+            <input
+              autoFocus
+              type="password"
+              maxLength={64}
+              value={pwValue}
+              onChange={(e) => {
+                setPwValue(e.target.value);
+                setJoinError(null);
+              }}
+              className="mc-input-field text-xl font-mono"
+              placeholder="Clave de acceso"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="mc-button text-xl py-2 px-6 min-w-0 bg-[#444444]"
+                onClick={() => setPwPrompt(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={joinBusy}
+                className="mc-button text-xl py-2 px-8 min-w-0 bg-[#3a752a] text-white font-bold"
+              >
+                {joinBusy ? "Conectando..." : "▶ Entrar"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

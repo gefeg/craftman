@@ -768,3 +768,54 @@
     }
   }
 }
+
+/* Bedrock Edition home buttons */
+@layer components {
+  .bedrock-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    color: #ffffff;
+    background: #d0d1d4;
+    color: #1e1e1f;
+    border: 2px solid #1e1e1f;
+    box-shadow:
+      inset 0 -6px 0 #58585a,
+      inset 2px 2px 0 #ececed,
+      inset -2px -8px 0 #b1b2b5;
+    padding: 0.55rem 1rem 0.85rem;
+    cursor: pointer;
+    image-rendering: pixelated;
+    transition: transform 0.05s;
+  }
+  .bedrock-btn:hover {
+    background: #ececed;
+  }
+  .bedrock-btn:active {
+    transform: translateY(3px);
+    box-shadow:
+      inset 0 -3px 0 #58585a,
+      inset 2px 2px 0 #ececed;
+  }
+  .bedrock-btn-green {
+    background: #3c8527;
+    color: #ffffff;
+    text-shadow: 2px 2px 0 #1e1e1f;
+    box-shadow:
+      inset 0 -6px 0 #1d4d13,
+      inset 2px 2px 0 #63a948,
+      inset -2px -8px 0 #2a641c;
+  }
+  .bedrock-btn-green:hover {
+    background: #4c9d35;
+  }
+  .bedrock-square {
+    width: 3.25rem;
+    height: 3.25rem;
+    padding: 0 0 0.35rem;
+    font-size: 1.5rem;
+  }
+}

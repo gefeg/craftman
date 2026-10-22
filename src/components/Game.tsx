@@ -12,7 +12,7 @@ import { SettingsMenu } from "./SettingsMenu";
 import { saveWorld, createNewWorldRecord, type WorldRecord } from "@/game/worldsDb";
 import { startMusic, stopAudio, sfx } from "@/game/audio";
 import { getStoredPlayerName } from "@/game/skinStorage";
-import { SERVER_ICONS, getServerIconEmoji } from "./WorldsMenu";
+import { SERVER_ICONS, getServerIconEmoji, ServerIcon, serverAddress, type JoinInfo } from "./WorldsMenu";
 import guiInventory from "@/assets/gui_inventory.png.asset.json";
 import guiTable from "@/assets/gui_crafting_table.png.asset.json";
 import guiFurnace from "@/assets/gui_furnace.png.asset.json";
@@ -139,6 +139,7 @@ export function Game() {
   const ref = useRef<HTMLCanvasElement>(null);
   const [appState, setAppState] = useState<"menu" | "loading" | "playing">("menu");
   const [activeWorld, setActiveWorld] = useState<WorldRecord | null>(null);
+  const pendingJoinRef = useRef<{ address: string; name: string; info?: JoinInfo } | null>(null);
   const [engine, setEngine] = useState<Engine | null>(null);
   const [s, setS] = useState<GameState | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
@@ -160,9 +161,16 @@ export function Game() {
       startMusic();
 
       // If this world is a configured server, immediately start multiplayer hosting!
-      if (activeWorld.isServer && activeWorld.serverConfig) {
-        const address = `${activeWorld.serverConfig.ip}:${activeWorld.serverConfig.port}`;
+      const pj = pendingJoinRef.current;
+      if (pj) {
+        pendingJoinRef.current = null;
+        e.mpPassword = pj.info?.password || "";
+        e.serverOwnerName = pj.info?.ownerName || "";
+        e.connectMultiplayer(pj.address, pj.name, !!pj.info?.isOwner, pj.info?.blocks);
+      } else if (activeWorld.isServer && activeWorld.serverConfig) {
+        const address = serverAddress(activeWorld.serverConfig);
         e.isServerOwner = true;
+        e.serverConfig = activeWorld.serverConfig;
         e.connectMultiplayer(address, getStoredPlayerName(), true);
       }
 
@@ -189,21 +197,20 @@ export function Game() {
     setAppState("playing");
   };
 
-  const handleJoinServer = (roomCode: string, name: string) => {
-    const tempWorld = createNewWorldRecord(`Servidor ${roomCode}`, "survival", 123456);
+  const handleJoinServer = (roomCode: string, name: string, info?: JoinInfo) => {
+    const seed = info?.seed ?? 123456;
+    const tempWorld = createNewWorldRecord(info?.name || `Servidor ${roomCode}`, "survival", seed);
     tempWorld.isServer = true;
     tempWorld.serverConfig = {
-      ip: roomCode.split(":")[0] || roomCode,
-      port: parseInt(roomCode.split(":")[1] || "19132", 10),
-      icon: "diamond",
-      serverName: `Servidor ${roomCode}`,
+      ip: roomCode,
+      port: 0,
+      icon: info?.icon || "diamond",
+      serverName: info?.name || `Servidor ${roomCode}`,
       isOwner: false,
     };
+    pendingJoinRef.current = { address: roomCode, name, info };
     setActiveWorld(tempWorld);
     setAppState("loading");
-    setTimeout(() => {
-      if (engine) engine.connectMultiplayer(roomCode, name, false);
-    }, 1200);
   };
 
   const handleSaveAndQuit = async () => {
@@ -266,7 +273,7 @@ export function Game() {
               <div className="flex items-center gap-2 bg-black/75 px-3 py-1.5 text-white border-2 border-black text-[1.15rem] shadow-lg">
                 <span className="text-emerald-400 font-bold">● SERVIDOR</span>
                 {activeWorld?.serverConfig?.icon && (
-                  <span>{getServerIconEmoji(activeWorld.serverConfig.icon)}</span>
+                  <ServerIcon icon={activeWorld.serverConfig.icon} className="w-6 h-6 text-lg" />
                 )}
                 <span>
                   <span className="text-yellow-300 font-mono font-bold tracking-wider">
@@ -491,7 +498,7 @@ export function Game() {
                             false,
                           );
                         } else if (engine && activeWorld?.serverConfig) {
-                          const addr = `${activeWorld.serverConfig.ip}:${activeWorld.serverConfig.port}`;
+                          const addr = serverAddress(activeWorld.serverConfig);
                           engine.connectMultiplayer(addr, getStoredPlayerName(), false);
                         }
                       }}
@@ -697,6 +704,12 @@ function MultiplayerModal({
     setConnecting(true);
 
     engine.isServerOwner = true;
+    engine.serverConfig = {
+      ip: cleanIp,
+      port: cleanPort,
+      icon: iconInput,
+      serverName: `Servidor de ${centralPlayerName}`,
+    };
     const ok = await engine.connectMultiplayer(roomAddress, centralPlayerName, true);
     setConnecting(false);
     if (!ok) {
