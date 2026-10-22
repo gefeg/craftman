@@ -19,6 +19,8 @@ import faithful from "./packs/faithful.json";
 import { getSettings, type GameSettings } from "./settings";
 import { getStoredCustomSkin, getStoredPlayerName } from "./skinStorage";
 import type { WorldRecord, ServerConfig } from "./worldsDb";
+import { RealtimeSocket, getOwnerToken, normAddr } from "./mpClient";
+import { registerServer, saveBlocks, setBan } from "@/lib/mpServers.functions";
 
 const FA = faithful as { width: number; height: number; rects: Record<string, number[]> };
 function blockMat(id: number): Material {
@@ -728,9 +730,10 @@ export class Engine {
     yaw = 0,
     pitch = 0,
     held: string | null = null,
+    skin: string | null = null,
   ) {
     if (this.remotePlayers.has(id)) return;
-    const model = buildPlayerModel();
+    const model = buildPlayerModel(skin || undefined);
     const tagSprite = this.createNameTagSprite(name);
     model.root.add(tagSprite);
     const pVec = new THREE.Vector3(pos[0], pos[1], pos[2]);
@@ -1095,6 +1098,15 @@ export class Engine {
   }
 
   disconnectMultiplayer() {
+    this.flushMpBlocks();
+    if (this.mpFlushTimer) {
+      clearInterval(this.mpFlushTimer);
+      this.mpFlushTimer = null;
+    }
+    if (this.mpHeartbeatTimer) {
+      clearInterval(this.mpHeartbeatTimer);
+      this.mpHeartbeatTimer = null;
+    }
     if (this.ws) {
       try {
         this.ws.onclose = null;
@@ -1111,7 +1123,7 @@ export class Engine {
       this.httpSyncTimer = null;
     }
 
-    if (this.multiplayerRoom && this.multiplayerPlayerId) {
+    if (false) {
       try {
         fetch("/api/multiplayer/leave", {
           method: "POST",
@@ -1138,6 +1150,7 @@ export class Engine {
   }
 
   sendBlockChange(x: number, y: number, z: number, id: number) {
+    if (this.multiplayerRoom) this.mpPendingSave.push({ x, y, z, id });
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(
         JSON.stringify({
@@ -1305,6 +1318,8 @@ export class Engine {
   }
 
   banPlayer(targetName: string) {
+    if (this.multiplayerRoom)
+      setBan({ data: { address: this.multiplayerRoom, ownerToken: getOwnerToken(this.multiplayerRoom), name: targetName, banned: true } }).catch(() => {});
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: "ban", target: targetName }));
     } else if (this.multiplayerRoom) {
@@ -1321,6 +1336,8 @@ export class Engine {
   }
 
   unbanPlayer(targetName: string) {
+    if (this.multiplayerRoom)
+      setBan({ data: { address: this.multiplayerRoom, ownerToken: getOwnerToken(this.multiplayerRoom), name: targetName, banned: false } }).catch(() => {});
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: "unban", target: targetName }));
     } else if (this.multiplayerRoom) {
