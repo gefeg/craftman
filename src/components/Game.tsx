@@ -160,9 +160,16 @@ export function Game() {
       startMusic();
 
       // If this world is a configured server, immediately start multiplayer hosting!
-      if (activeWorld.isServer && activeWorld.serverConfig) {
-        const address = `${activeWorld.serverConfig.ip}:${activeWorld.serverConfig.port}`;
+      const pj = pendingJoinRef.current;
+      if (pj) {
+        pendingJoinRef.current = null;
+        e.mpPassword = pj.info?.password || "";
+        e.serverOwnerName = pj.info?.ownerName || "";
+        e.connectMultiplayer(pj.address, pj.name, !!pj.info?.isOwner, pj.info?.blocks);
+      } else if (activeWorld.isServer && activeWorld.serverConfig) {
+        const address = serverAddress(activeWorld.serverConfig);
         e.isServerOwner = true;
+        e.serverConfig = activeWorld.serverConfig;
         e.connectMultiplayer(address, getStoredPlayerName(), true);
       }
 
@@ -189,21 +196,20 @@ export function Game() {
     setAppState("playing");
   };
 
-  const handleJoinServer = (roomCode: string, name: string) => {
-    const tempWorld = createNewWorldRecord(`Servidor ${roomCode}`, "survival", 123456);
+  const handleJoinServer = (roomCode: string, name: string, info?: JoinInfo) => {
+    const seed = info?.seed ?? 123456;
+    const tempWorld = createNewWorldRecord(info?.name || `Servidor ${roomCode}`, "survival", seed);
     tempWorld.isServer = true;
     tempWorld.serverConfig = {
-      ip: roomCode.split(":")[0] || roomCode,
-      port: parseInt(roomCode.split(":")[1] || "19132", 10),
-      icon: "diamond",
-      serverName: `Servidor ${roomCode}`,
+      ip: roomCode,
+      port: 0,
+      icon: info?.icon || "diamond",
+      serverName: info?.name || `Servidor ${roomCode}`,
       isOwner: false,
     };
+    pendingJoinRef.current = { address: roomCode, name, info };
     setActiveWorld(tempWorld);
     setAppState("loading");
-    setTimeout(() => {
-      if (engine) engine.connectMultiplayer(roomCode, name, false);
-    }, 1200);
   };
 
   const handleSaveAndQuit = async () => {
