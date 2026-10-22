@@ -1674,52 +1674,74 @@ export class Engine {
   }
 
   // ---------- actions ----------
+  /** Minecraft-style attack: cooldown charge scales damage, falling = critical, sprint = extra knockback, sword sweep. */
   attack() {
-    if (this.attackCd > 0) return;
     const hitM = this.rayMob();
     const hitB = this.raycast();
+    const it = ITEMS[this.held() ?? ""];
+    const tool = it?.tool;
+    const fullCd = tool === "sword" ? 0.625 : tool === "axe" ? 1 : tool ? 0.85 : 0.25;
+    const charge = Math.max(0, Math.min(1, 1 - Math.max(0, this.attackCd) / fullCd));
+    this.handSwing = 1;
     if (hitM && (!hitB || hitM.t < hitB.t)) {
-      const it = ITEMS[this.held() ?? ""];
-      const dmg = it?.damage ?? 1;
-      this.damageMob(hitM.mob, dmg, this.look());
-      this.attackCd = 0.45;
-      this.handSwing = 1;
-      this.damageHeldTool(it?.tool === "sword" ? 1 : 2);
-    } else if (this.attackCd <= 0 && this.handSwing <= 0) {
+      const base = it?.damage ?? 1;
+      let dmg = base * (0.2 + charge * charge * 0.8);
+      const p = this.player;
+      const crit = charge > 0.9 && !p.onGround && p.vel.y < 0 && !p.inWater;
+      const sprinting = this.keys.has("ControlLeft") && charge > 0.9;
+      if (crit) dmg *= 1.5;
+      const dir = this.look();
+      const landed = this.damageMob(hitM.mob, dmg, dir, sprinting ? 1.6 : charge > 0.9 ? 1 : 0.5);
+      if (landed) {
+        if (crit) sfx.attack("crit");
+        else if (charge > 0.9) sfx.attack("strong");
+        else sfx.attack("weak");
+        // Sword sweep: full charge, on ground, not sprinting
+        if (tool === "sword" && charge > 0.9 && p.onGround && !sprinting) {
+          sfx.attack("sweep");
+          for (const o of [...this.mobs]) {
+            if (o === hitM.mob) continue;
+            if (o.pos.distanceTo(hitM.mob.pos) < 1.6) this.damageMob(o, 1, dir, 0.6);
+          }
+        }
+      }
+      this.damageHeldTool(tool === "sword" ? 1 : 2);
+    } else {
       sfx.swing();
-      this.handSwing = 1;
-      this.attackCd = 0.3;
     }
+    this.attackCd = fullCd;
   }
 
-  damageMob(m: Mob, dmg: number, dir: THREE.Vector3) {
-    if (m.hurt > 0.2) return;
+  damageMob(m: Mob, dmg: number, dir: THREE.Vector3, kb = 1): boolean {
+    if (m.hurt > 0.2) return false;
     m.hp -= dmg;
     m.hurt = 0.5;
-    sfx.hit();
-    sfx.mobHurt(m.type);
+    if (m.hp > 0) sfx.mobHurt(m.type);
 
     // If creeper takes fatal damage or is hit while almost ready to detonate, detonate!
     if (m.type === "creeper" && (m.fuse > 0.75 || (m.hp <= 0 && m.fuse > 0.3))) {
       this.killMob(m, false);
       this.explode(m.pos.clone().add(new THREE.Vector3(0, 0.8, 0)), 3.8);
-      return;
+      return true;
     }
 
-    m.vel.x += dir.x * 7;
-    m.vel.z += dir.z * 7;
-    m.vel.y = 5;
+    m.vel.x += dir.x * 7 * kb;
+    m.vel.z += dir.z * 7 * kb;
+    m.vel.y = 4 + kb;
     if (!MOBS[m.type].hostile) {
       m.wander = 4;
       m.dir.set(dir.x, dir.z).normalize();
     }
     if (m.hp <= 0) this.killMob(m, true);
+    return true;
   }
 
   killMob(m: Mob, loot: boolean) {
     this.scene.remove(m.model.root);
     this.mobs = this.mobs.filter((x) => x !== m);
     if (!loot) return;
+    sfx.mobDeath(m.type);
+    sfx.pop();
     for (const [id, mn, mx] of MOBS[m.type].drops) {
       const n = mn + Math.floor(Math.random() * (mx - mn + 1));
       if (n > 0) this.spawnDrop(id, n, m.pos.clone().add(new THREE.Vector3(0, 0.5, 0)));
@@ -2121,7 +2143,11 @@ export class Engine {
     if (!p.onGround) this.fallStart = Math.max(this.fallStart, p.pos.y);
     else {
       const fall = this.fallStart - p.pos.y;
-      if (fall > 3.5 && this.state.mode !== "creative") this.hurtPlayer(Math.floor(fall - 3));
+      if (fall > 3.5 && this.state.mode !== "creative") {
+        const n = Math.floor(fall - 3);
+        sfx.fall(n > 4);
+        this.hurtPlayer(n);
+      }
       this.fallStart = p.pos.y;
     }
     if (p.pos.y < -30) {
@@ -2303,7 +2329,8 @@ export class Engine {
         this.emit();
       }
     }
-    if (this.mouseL && playing) this.attack();
+    // Holding click keeps hitting mobs, but only once the attack cooldown has fully recharged
+    if (this.mouseL && playing && this.attackCd <= 0 && this.rayMob()) this.attack();
 
     // hand
     this.updateHand(dt);

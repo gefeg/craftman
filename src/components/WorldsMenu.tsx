@@ -664,14 +664,9 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
             {/* Section 1: Mundos Configurados como Servidor */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-2xl font-bold text-yellow-300 tracking-wide flex items-center gap-2">
-                  <span>👑</span> TUS SERVIDORES (Mundos convertidos a Servidor)
-                </h3>
-                <span className="text-sm text-neutral-400">
-                  {serverWorlds.length} servidor(es) creados
-                </span>
-              </div>
+              <h3 className="text-2xl font-bold text-white tracking-wide mb-3 drop-shadow-[2px_2px_0_#000]">
+                TUS SERVIDORES
+              </h3>
 
               {serverWorlds.length === 0 ? (
                 <div className="bg-[#202020] border-2 border-black/30 p-6 text-center text-neutral-400">
@@ -691,85 +686,26 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                     return (
                       <div
                         key={w.id}
-                        className="flex flex-col md:flex-row items-stretch justify-between bg-[#282d33] hover:bg-[#2d333a] border-2 border-cyan-900/60 p-4 gap-4 transition-all shadow-[2px_2px_0_#000000]"
+                        className="flex items-center justify-between bg-[#262626] border-2 border-black/60 p-3 gap-4 shadow-[2px_2px_0_#000000]"
                       >
-                        {/* Left: Icon & Info */}
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="w-20 h-20 bg-[#161a1f] border-2 border-cyan-700/60 flex items-center justify-center text-4xl shadow-inner flex-shrink-0 overflow-hidden">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-16 h-16 bg-[#161616] border-2 border-black flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
                             <ServerIcon icon={cfg?.icon} className="w-full h-full" />
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-3xl font-bold text-white tracking-wide drop-shadow-[2px_2px_0_#000000]">
-                                {cfg?.serverName || w.name}
-                              </h4>
-                              <span className="px-2 py-0.5 text-sm font-bold bg-amber-600/90 text-amber-100 border border-amber-950">
-                                👑 ERES EL DUEÑO
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 mt-1 text-lg">
-                              <span className="font-mono text-cyan-300 font-bold bg-black/40 px-2 py-0.5 border border-cyan-900/40">
-                                {cfg?.ip || "127.0.0.1"}:{cfg?.port || 19132}
-                              </span>
-                              <span className="text-emerald-400 font-bold">
-                                ● Público
-                              </span>
-                              {cfg && getSavedPassword(serverAddress(cfg)) && (
-                                <span className="text-amber-300 font-bold">🔒 Con clave</span>
-                              )}
-                              <span className="text-neutral-400 text-sm">
-                                · {formatDate(w.lastPlayed)}
-                              </span>
-                            </div>
-                            <div className="text-sm text-neutral-400 mt-1">
-                              Comandos disponibles para ti:{" "}
-                              <span className="font-mono text-yellow-300">
-                                /ban, /kick, /sethome, /home
-                              </span>
-                            </div>
-                          </div>
+                          <span className="font-mono text-2xl text-white truncate">
+                            {cfg?.ip || "127.0.0.1"}:{cfg?.port || 19132}
+                          </span>
                         </div>
-
-                        {/* Right: Actions */}
-                        <div className="flex items-center gap-2 flex-shrink-0 self-center md:self-auto flex-wrap">
-                          <button
-                            type="button"
-                            className="mc-button text-2xl py-2 px-6 min-w-0 bg-[#3a752a] hover:bg-[#488e35] text-white font-bold"
-                            onClick={() => {
-                              sfx.click();
-                              onSelectWorld(w);
-                            }}
-                          >
-                            ▶ Iniciar Servidor
-                          </button>
-                          <button
-                            type="button"
-                            className="mc-button text-lg py-2 px-3 min-w-0 bg-[#38424d] text-cyan-200"
-                            onClick={() => handleOpenServerModal(w)}
-                            title="Editar IP, Puerto o Icono"
-                          >
-                            ⚙️ Editar
-                          </button>
-                          <button
-                            type="button"
-                            className="mc-button text-lg py-2 px-3 min-w-0 bg-[#504030] text-amber-200"
-                            onClick={() => handleRevertServer(w)}
-                            title="Revertir a Mundo normal (volverá a la pestaña Mundos)"
-                          >
-                            ↩ A Mundos
-                          </button>
-                          <button
-                            type="button"
-                            className="mc-badge-btn text-xl px-3 py-2 text-red-400 hover:bg-red-900/50 hover:text-red-200"
-                            onClick={() => {
-                              sfx.click();
-                              setDeleteTarget(w);
-                            }}
-                            title="Eliminar mundo servidor"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="bedrock-btn bedrock-btn-green text-2xl px-6 w-auto flex-shrink-0"
+                          onClick={() => {
+                            sfx.click();
+                            onSelectWorld(w);
+                          }}
+                        >
+                          ▶ Iniciar servidor
+                        </button>
                       </div>
                     );
                   })}
@@ -802,38 +738,28 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 <div className="grid grid-cols-1 gap-2">
                   {publicServers.map((ps) => {
                     const online = isOnline(ps);
-                    const mine = !!getOwnerToken(ps.address);
                     return (
                       <div
                         key={ps.address}
-                        className="flex flex-col sm:flex-row items-stretch justify-between bg-[#242424] hover:bg-[#2b2b2b] border-2 border-black/50 p-3 gap-3"
+                        className="flex items-center justify-between bg-[#262626] border-2 border-black/60 p-3 gap-4 shadow-[2px_2px_0_#000000]"
                       >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <div className="w-16 h-16 bg-[#181818] border-2 border-black/40 flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-16 h-16 bg-[#161616] border-2 border-black flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
                             <ServerIcon icon={ps.icon} className="w-full h-full" />
                           </div>
-                          <div className="min-w-0">
-                            <h4 className="text-2xl font-bold text-white tracking-wide truncate">
-                              {ps.name}
-                              {ps.has_password && <span className="ml-2 text-amber-300">🔒</span>}
-                            </h4>
-                            {ps.motd && <p className="text-base text-neutral-300 truncate">{ps.motd}</p>}
-                            <div className="flex flex-wrap items-center gap-2 text-base mt-0.5">
-                              <span className="font-mono text-cyan-300 bg-black/40 px-2">{ps.address}</span>
-                              <span className={online ? "text-emerald-400 font-bold" : "text-neutral-500"}>
-                                {online ? "● En línea" : "○ Desconectado"}
-                              </span>
-                              <span className="text-neutral-400 text-sm">
-                                · Dueño: {ps.owner_name}
-                                {mine ? " (tú)" : ""}
-                              </span>
-                            </div>
-                          </div>
+                          <span className="font-mono text-2xl text-white truncate flex items-center gap-2">
+                            <span
+                              className={`inline-block w-3 h-3 flex-shrink-0 ${online ? "bg-emerald-400" : "bg-neutral-600"}`}
+                              title={online ? "En línea" : "Desconectado"}
+                            />
+                            {ps.address.toLowerCase()}
+                            {ps.has_password && <span title="Con clave">🔒</span>}
+                          </span>
                         </div>
                         <button
                           type="button"
                           disabled={joinBusy}
-                          className="mc-button text-2xl py-2 px-6 min-w-0 bg-[#3a752a] text-white self-center"
+                          className="bedrock-btn bedrock-btn-green text-2xl px-6 w-auto flex-shrink-0"
                           onClick={() => {
                             sfx.click();
                             handlePublicJoin(ps.address, ps.name);

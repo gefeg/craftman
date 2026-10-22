@@ -1,205 +1,233 @@
 {
   "dig.grass": [
-    "/__l5e/assets-v1/17750dc3-1af8-4e69-a0fc-5273090458e5/dig_grass1.ogg",
-    "/__l5e/assets-v1/5fd4b200-8b6c-47eb-9a56-c3c7bbd90773/dig_grass2.ogg",
-    "/__l5e/assets-v1/82216893-072f-4607-946f-1a6db1c1fdfb/dig_grass3.ogg",
-    "/__l5e/assets-v1/a4c03592-8b5f-438a-b376-4fa047e6702d/dig_grass4.ogg"
+    "/__l5e/assets-v1/9d9bf5f5-6381-4614-9c0a-a7e8e117feba/dig_grass1.ogg",
+    "/__l5e/assets-v1/d033e0cc-43f0-4b04-8997-06bb101fdd1b/dig_grass2.ogg",
+    "/__l5e/assets-v1/ae3e5241-e694-496e-9378-f402261dbddd/dig_grass3.ogg",
+    "/__l5e/assets-v1/2fca9b9b-1cb0-4fd7-a96e-ba9f3575ebd0/dig_grass4.ogg"
   ],
   "step.grass": [
-    "/__l5e/assets-v1/99c88e43-5024-43e7-9202-7431d664e865/step_grass1.ogg",
-    "/__l5e/assets-v1/f842d6a8-8e76-46d8-bd7f-18def51a7349/step_grass2.ogg",
-    "/__l5e/assets-v1/a7cca683-3347-4929-ace1-d06d2515b6ca/step_grass3.ogg",
-    "/__l5e/assets-v1/38fe95a6-9544-4097-99a2-adfdfa510046/step_grass4.ogg",
-    "/__l5e/assets-v1/391db8e4-6d15-4a44-bfc8-04da1e693f66/step_grass5.ogg",
-    "/__l5e/assets-v1/5eaea43c-f940-46b1-b0c4-595b3063f476/step_grass6.ogg"
+    "/__l5e/assets-v1/aebcbe88-b3c6-4de9-a723-98c82d240a05/step_grass1.ogg",
+    "/__l5e/assets-v1/2205504b-1ece-48a0-9152-599c64492aa0/step_grass3.ogg",
+    "/__l5e/assets-v1/7aef1b71-f897-4c0d-9385-a5ee0d51de58/step_grass4.ogg",
+    "/__l5e/assets-v1/4972f7c9-9836-4b6e-8f25-21b459c47663/step_grass5.ogg",
+    "/__l5e/assets-v1/ad72498f-ba1b-4d87-be67-600604fff91b/step_grass6.ogg"
   ],
   "dig.stone": [
-    "/__l5e/assets-v1/3f103c15-5563-4b63-b92b-cdcb94b24fd0/dig_stone1.ogg",
-    "/__l5e/assets-v1/b8495c13-2756-4d2c-862b-6927454946f0/dig_stone2.ogg",
-    "/__l5e/assets-v1/d472881c-09e2-4161-90b2-0ed71476dd35/dig_stone3.ogg",
-    "/__l5e/assets-v1/548b28d9-33c8-44c6-925f-5b40f0828179/dig_stone4.ogg"
+    "/__l5e/assets-v1/953ab436-06b1-4707-b240-4d0850a7e717/dig_stone1.ogg",
+    "/__l5e/assets-v1/30357006-73e1-44ab-9775-da8355329577/dig_stone2.ogg",
+    "/__l5e/assets-v1/026a2570-6f31-4e29-b81d-d1b1d7182169/dig_stone4.ogg"
   ],
   "step.stone": [
-    "/__l5e/assets-v1/1142689c-6557-49c7-9ffb-f5d5a4851777/step_stone1.ogg",
-    "/__l5e/assets-v1/a0c94ec6-f758-45ea-b607-c53575d64ff7/step_stone2.ogg",
-    "/__l5e/assets-v1/3f8e3f83-7d80-4f3a-ae46-230b101745a1/step_stone3.ogg",
-    "/__l5e/assets-v1/3c3a3c9e-35fa-4fc6-8c50-b4354ce0eb07/step_stone4.ogg",
-    "/__l5e/assets-v1/d25583e1-8978-4927-907a-16735b84f569/step_stone5.ogg",
-    "/__l5e/assets-v1/41a16e02-6616-4dff-a5dc-d11210cd1ad5/step_stone6.ogg"
+    "/__l5e/assets-v1/18f9895a-822c-4495-9bc7-a61126d1b286/step_stone1.ogg",
+    "/__l5e/assets-v1/ad6ada99-27f6-4bca-87fb-0e4d950a5efc/step_stone2.ogg",
+    "/__l5e/assets-v1/d4d58fcc-8dac-452c-b76a-6b3041c86769/step_stone3.ogg",
+    "/__l5e/assets-v1/03637149-1399-43be-b9c6-95ab225ba198/step_stone4.ogg",
+    "/__l5e/assets-v1/8e5567f7-4f9c-4782-a51f-346d065b307e/step_stone6.ogg"
   ],
   "dig.wood": [
-    "/__l5e/assets-v1/4366aa1b-1c5e-43ac-870a-c9940d5b30bf/dig_wood1.ogg",
-    "/__l5e/assets-v1/9a614b5b-ca2f-4756-8aee-a08e31baf2bd/dig_wood2.ogg",
-    "/__l5e/assets-v1/4887b745-0dff-4781-af69-f08f6ff0263a/dig_wood3.ogg",
-    "/__l5e/assets-v1/03823358-d1e1-47ab-86d8-cad30a48301b/dig_wood4.ogg"
+    "/__l5e/assets-v1/8fea580f-c9db-49a4-b572-ace693af3696/dig_wood1.ogg",
+    "/__l5e/assets-v1/0f7d0009-de02-4705-a931-ea01ae779987/dig_wood2.ogg",
+    "/__l5e/assets-v1/0dd992f8-6e91-431b-ae52-c23adb72735c/dig_wood3.ogg",
+    "/__l5e/assets-v1/7de0dfd1-2bf4-4944-9466-27d1e986a8df/dig_wood4.ogg"
   ],
   "step.wood": [
-    "/__l5e/assets-v1/a862849d-c2a4-46a3-acbe-43dea37d7782/step_wood1.ogg",
-    "/__l5e/assets-v1/f56a9142-fbee-4117-aa5d-9130a5b68576/step_wood2.ogg",
-    "/__l5e/assets-v1/a01413a1-4be0-4985-bc44-89fabd77e96f/step_wood3.ogg",
-    "/__l5e/assets-v1/fddc226f-7174-4fb6-943c-66169e302729/step_wood4.ogg",
-    "/__l5e/assets-v1/7b39c1cc-12b6-441c-8e0f-b0538bb460c6/step_wood5.ogg",
-    "/__l5e/assets-v1/9e6cc146-c568-4205-8855-d3abae75b74b/step_wood6.ogg"
+    "/__l5e/assets-v1/d50fd333-70c0-46e9-ba5b-a180c288e45f/step_wood1.ogg",
+    "/__l5e/assets-v1/99cc7207-ce6b-4f73-a93a-8db3560d2166/step_wood3.ogg",
+    "/__l5e/assets-v1/53382d6f-ddae-43ab-9c5c-7859d4d6aefd/step_wood5.ogg",
+    "/__l5e/assets-v1/6129e0b5-09dd-45de-9933-791b0f50d8dd/step_wood6.ogg"
   ],
   "dig.gravel": [
-    "/__l5e/assets-v1/f0c3b6f6-7b67-45c2-9c08-ddffab680f89/dig_gravel1.ogg",
-    "/__l5e/assets-v1/cbf54a84-d1c1-4798-9cd3-f823665c611b/dig_gravel2.ogg",
-    "/__l5e/assets-v1/df584989-1564-48cf-9be3-865bf99b40b9/dig_gravel3.ogg",
-    "/__l5e/assets-v1/4f830a6d-40cd-4d63-92f6-5d3bf2375897/dig_gravel4.ogg"
+    "/__l5e/assets-v1/14a68bfc-b203-46bc-bd1b-602070b676a0/dig_gravel4.ogg"
   ],
   "step.gravel": [
-    "/__l5e/assets-v1/9b6af67d-9cb6-41de-88dd-4ce81f3d8c23/step_gravel1.ogg",
-    "/__l5e/assets-v1/7fb0d635-4666-47bd-8df8-15c139693866/step_gravel2.ogg",
-    "/__l5e/assets-v1/54180b2d-00f0-4c0d-a375-180f99fa27ef/step_gravel3.ogg",
-    "/__l5e/assets-v1/808da3fc-40a3-4c17-aa42-c337f54afebd/step_gravel4.ogg"
+    "/__l5e/assets-v1/49a69479-fc01-4576-9844-01b619633cee/step_gravel1.ogg",
+    "/__l5e/assets-v1/dba501fc-5865-4662-909a-2021274d1471/step_gravel2.ogg",
+    "/__l5e/assets-v1/99862f56-5775-4992-86b6-58e76edde276/step_gravel3.ogg",
+    "/__l5e/assets-v1/ece675b2-1604-4d9d-9aad-f0b96b0163fa/step_gravel4.ogg"
   ],
   "dig.sand": [
-    "/__l5e/assets-v1/d70a7444-fc56-45e2-9dce-c8cd5d2929c1/dig_sand1.ogg",
-    "/__l5e/assets-v1/faa7799d-b583-4e7d-9064-780a78e31ab9/dig_sand2.ogg",
-    "/__l5e/assets-v1/970ce8f3-9dc5-41e4-b846-2817979d4bf5/dig_sand3.ogg",
-    "/__l5e/assets-v1/9662649b-1ffc-4436-99ed-1fc05e29b4ed/dig_sand4.ogg"
+    "/__l5e/assets-v1/925c1f53-2e05-4907-a2c5-8adae5df026b/dig_sand3.ogg",
+    "/__l5e/assets-v1/f684934e-4926-4dc0-bb51-3bad270f7aa3/dig_sand4.ogg"
   ],
   "step.sand": [
-    "/__l5e/assets-v1/c9b0129a-416d-4093-8a5a-2c2938f26eb1/step_sand1.ogg",
-    "/__l5e/assets-v1/d4e91c4e-eab0-4e5c-a338-54838b4b2fd3/step_sand2.ogg",
-    "/__l5e/assets-v1/25b3aad9-b58c-4f69-a41a-606a1774fb7b/step_sand3.ogg",
-    "/__l5e/assets-v1/8fa4f792-86de-45ae-bc20-bcccb6d76e68/step_sand4.ogg",
-    "/__l5e/assets-v1/11dbdf4d-6bab-4859-b466-e94a8cb84a94/step_sand5.ogg"
+    "/__l5e/assets-v1/dde53cc2-b5e8-4fc5-87c4-382d75f7adf4/step_sand1.ogg",
+    "/__l5e/assets-v1/27b38c29-58b2-4e46-8d24-1b3a52fb67a1/step_sand3.ogg",
+    "/__l5e/assets-v1/09e06e9c-cf3e-4707-8326-84c16d4f91ef/step_sand4.ogg",
+    "/__l5e/assets-v1/0d2da610-555c-4612-8bb6-ef42d0fb7edd/step_sand5.ogg"
   ],
   "dig.cloth": [
-    "/__l5e/assets-v1/64946644-4254-40de-a841-feb1bb912247/dig_cloth1.ogg",
-    "/__l5e/assets-v1/bedd07dc-f5d9-4ed0-80d1-96d0e0147ad6/dig_cloth2.ogg",
-    "/__l5e/assets-v1/d6a63f0f-296c-4f1d-9a8e-2a2948bf2d87/dig_cloth3.ogg",
-    "/__l5e/assets-v1/ed9354f5-d151-444f-80c5-d2cdf4609e3f/dig_cloth4.ogg"
+    "/__l5e/assets-v1/fead6d68-1742-43f8-aa53-861940fdfa21/dig_cloth1.ogg",
+    "/__l5e/assets-v1/db0d03b3-8e8c-4948-922c-1d5a7acade56/dig_cloth2.ogg"
   ],
   "step.cloth": [
-    "/__l5e/assets-v1/966c8464-1bf1-4b51-9ac4-983238195a66/step_cloth1.ogg",
-    "/__l5e/assets-v1/23872c9e-f620-4d92-b05e-09212f809f61/step_cloth2.ogg",
-    "/__l5e/assets-v1/c8946b2d-41ce-43e1-975e-6dfdacbc0c18/step_cloth3.ogg",
-    "/__l5e/assets-v1/15e17b73-d824-45b8-acc8-cb0c1b46e451/step_cloth4.ogg"
+    "/__l5e/assets-v1/ba30f12e-6fb0-4e1f-91e9-8d6c30801d03/step_cloth1.ogg",
+    "/__l5e/assets-v1/db7f74a9-9358-4895-87a9-9764459328f2/step_cloth2.ogg",
+    "/__l5e/assets-v1/93d02834-f148-4cd2-933f-3efcc0370b0b/step_cloth3.ogg",
+    "/__l5e/assets-v1/2df1acf5-a317-4388-925e-81a006d157c7/step_cloth4.ogg"
   ],
   "dig.snow": [
-    "/__l5e/assets-v1/d8ca4df0-afff-4a9e-8aae-8258f1164f3c/dig_snow1.ogg",
-    "/__l5e/assets-v1/99a81c1c-55bd-4878-9386-d7de9d4f3528/dig_snow2.ogg",
-    "/__l5e/assets-v1/1ea30ab3-727e-4405-95c8-678a5621639d/dig_snow3.ogg",
-    "/__l5e/assets-v1/db0133ce-be55-459c-a0af-1b49f3861891/dig_snow4.ogg"
+    "/__l5e/assets-v1/51d3cb76-d96a-452d-b99e-4f801ce2ddfc/dig_snow2.ogg",
+    "/__l5e/assets-v1/07889110-8607-4fee-beda-f6ac910264ee/dig_snow3.ogg"
   ],
   "step.snow": [
-    "/__l5e/assets-v1/54efd870-7459-4302-8237-8d1d1ae37d03/step_snow1.ogg",
-    "/__l5e/assets-v1/5c61241d-1e82-443a-8704-ac8b68d9cdd0/step_snow2.ogg",
-    "/__l5e/assets-v1/9a18bd91-a562-44e1-8067-c8a39b02fde7/step_snow3.ogg",
-    "/__l5e/assets-v1/6bc99b7a-1a12-49a9-8606-c5fdaed3f49b/step_snow4.ogg"
+    "/__l5e/assets-v1/ddda3912-ed69-4e96-98e5-931f66540518/step_snow1.ogg",
+    "/__l5e/assets-v1/99a5ee51-3acd-408b-b28b-f13a981bd634/step_snow2.ogg",
+    "/__l5e/assets-v1/efe2f4f7-78c2-4de8-93ff-8990f9263d08/step_snow3.ogg",
+    "/__l5e/assets-v1/641e2bcd-3212-4bad-8e79-55dee234d8fb/step_snow4.ogg"
   ],
   "glass": [
-    "/__l5e/assets-v1/99fc4b13-3b4b-48d2-9e78-06bec56fa694/random_glass1.ogg",
-    "/__l5e/assets-v1/f74d0c0e-9f0a-41fb-b251-06899ee2975c/random_glass2.ogg",
-    "/__l5e/assets-v1/c7520604-d897-452c-b5c7-9f42bb2aa06c/random_glass3.ogg"
+    "/__l5e/assets-v1/fd697ad7-5d4e-4e77-8f35-9af4ada8149c/random_glass1.ogg",
+    "/__l5e/assets-v1/533be317-6876-4f34-8c16-7985ec51c458/random_glass3.ogg"
   ],
   "hurt": [
-    "/__l5e/assets-v1/9e5d8a23-27e3-4e9c-8884-704666976f1e/damage_hit1.ogg",
-    "/__l5e/assets-v1/23302783-852e-41b5-8c3a-08354fa4f462/damage_hit2.ogg",
-    "/__l5e/assets-v1/7b6416e7-c854-4b35-89c0-b8e491638efa/damage_hit3.ogg"
+    "/__l5e/assets-v1/7615217f-1311-4745-a02d-178f8e23a9e0/damage_hit1.ogg",
+    "/__l5e/assets-v1/337bb251-05cd-4567-ae8b-e5c04c7e904e/damage_hit2.ogg",
+    "/__l5e/assets-v1/20bf0821-7ece-4354-8659-0c8f0d5ccc45/damage_hit3.ogg"
   ],
   "eat": [
-    "/__l5e/assets-v1/ca1234ff-0728-45e6-acfe-2aa70a6ec453/random_eat1.ogg",
-    "/__l5e/assets-v1/5656c86a-713d-4e84-a4dc-d13db0608ae6/random_eat2.ogg",
-    "/__l5e/assets-v1/25e8cdd1-3d79-4802-87ec-fdf3da9acab5/random_eat3.ogg"
+    "/__l5e/assets-v1/71a087cc-d0cb-4a98-848e-ad48ae3dccce/random_eat1.ogg",
+    "/__l5e/assets-v1/05267171-71e4-41ab-a3b0-92e688b30f78/random_eat2.ogg",
+    "/__l5e/assets-v1/26f2357f-2762-4426-bb13-d6fc2be0aadc/random_eat3.ogg"
   ],
-  "burp": ["/__l5e/assets-v1/05e32672-8bcd-4f9b-9dda-917afe510857/random_burp.ogg"],
-  "pop": ["/__l5e/assets-v1/28ad03ae-12e9-408f-b386-ad50f6bef4d4/random_pop.ogg"],
+  "burp": [
+    "/__l5e/assets-v1/df5438f6-4cbe-4d8d-b899-92d4803d4e7c/random_burp.ogg"
+  ],
+  "pop": [
+    "/__l5e/assets-v1/f704b933-38bf-49ad-9806-391064459030/random_pop.ogg"
+  ],
   "explode": [
-    "/__l5e/assets-v1/cb036d7f-3171-4b9f-8b5c-3f759d7be030/random_explode1.ogg",
-    "/__l5e/assets-v1/d1f5340f-b11d-4cc9-b9a8-172313497317/random_explode2.ogg",
-    "/__l5e/assets-v1/37586ebd-812f-41c5-86d4-7101c9c17a8a/random_explode3.ogg",
-    "/__l5e/assets-v1/1e749f68-a2d1-436c-a2e3-b19e3dc5c65a/random_explode4.ogg"
+    "/__l5e/assets-v1/3b89ecf1-906b-4dc5-be55-d292680f3883/random_explode3.ogg",
+    "/__l5e/assets-v1/b7a72a9f-1c53-4d80-81bf-b8d72d05d049/random_explode4.ogg"
   ],
-  "fuse": ["/__l5e/assets-v1/4e555fd4-9384-47b8-b304-be9eaee32028/random_fuse.ogg"],
+  "fuse": [
+    "/__l5e/assets-v1/1fe76926-819a-4ce0-90dd-e64bd211c905/random_fuse.ogg"
+  ],
   "swing.weak": [
-    "/__l5e/assets-v1/428d46e1-e0e0-4614-9f15-760043f9cf32/entity_player_attack_weak1.ogg",
-    "/__l5e/assets-v1/c0e7a4e2-4f46-41f1-b0b4-0770058045af/entity_player_attack_weak2.ogg",
-    "/__l5e/assets-v1/00203203-26dd-4a97-a9da-d0b878d37601/entity_player_attack_weak3.ogg",
-    "/__l5e/assets-v1/ed9e4dd6-6370-4b3e-9887-6942e47da340/entity_player_attack_weak4.ogg"
+    "/__l5e/assets-v1/dbee034b-5519-4be2-8794-8c6dcb60fbd8/entity_player_attack_weak1.ogg",
+    "/__l5e/assets-v1/00717ac0-a921-4b97-b054-bfd2a5a2a0a0/entity_player_attack_weak2.ogg",
+    "/__l5e/assets-v1/81601790-4f0f-479a-bb40-e30ed1034a25/entity_player_attack_weak3.ogg"
   ],
   "swing.strong": [
-    "/__l5e/assets-v1/1f0a2514-cad8-46d9-a3be-81fc5afa21d0/entity_player_attack_strong1.ogg",
-    "/__l5e/assets-v1/4514f64e-1923-4e3d-804c-820e982d3e7d/entity_player_attack_strong2.ogg",
-    "/__l5e/assets-v1/13cbe40d-4ac1-4262-af3d-e10ba9d1f3fa/entity_player_attack_strong3.ogg",
-    "/__l5e/assets-v1/7a03488b-c46e-4bb0-aef3-406ca5cf118c/entity_player_attack_strong4.ogg"
+    "/__l5e/assets-v1/505a891a-0ebb-4f8d-876e-09718e5d3546/entity_player_attack_strong1.ogg",
+    "/__l5e/assets-v1/8cbbafee-a7c3-440a-b772-66d32fb58a95/entity_player_attack_strong2.ogg",
+    "/__l5e/assets-v1/068e2d67-64fe-42ff-b88d-38ca94d5a701/entity_player_attack_strong3.ogg",
+    "/__l5e/assets-v1/23d46d11-edbd-4001-9b3d-0a3a93b278b7/entity_player_attack_strong4.ogg"
   ],
   "swing.sweep": [
-    "/__l5e/assets-v1/ac4f0276-dc7a-4417-95ba-e061d058dae7/entity_player_attack_sweep1.ogg",
-    "/__l5e/assets-v1/c590b663-1e8f-4366-9548-a5730726a333/entity_player_attack_sweep2.ogg",
-    "/__l5e/assets-v1/5725e4e9-4c52-4d4e-9e44-fa5abbe2b80c/entity_player_attack_sweep3.ogg",
-    "/__l5e/assets-v1/b36f3244-d16d-48f4-b8ac-d33a3a8a1b56/entity_player_attack_sweep4.ogg"
+    "/__l5e/assets-v1/5a6c35cf-cd80-4d8f-a1a1-48dcc5548c2e/entity_player_attack_sweep1.ogg",
+    "/__l5e/assets-v1/b6cc2966-b249-46d5-a2f2-486017350ed2/entity_player_attack_sweep2.ogg",
+    "/__l5e/assets-v1/46b8b3d0-7b7d-419c-9bf5-8929cecd2203/entity_player_attack_sweep3.ogg",
+    "/__l5e/assets-v1/d8712367-0a45-490d-8692-a56d773bc83f/entity_player_attack_sweep4.ogg"
   ],
   "mob.cow": [
-    "/__l5e/assets-v1/5ff00a73-c41f-43b9-a481-4fac0bfb1411/mob_cow_say1.ogg",
-    "/__l5e/assets-v1/91922b5c-5259-44ae-8d6a-a939e9cbfaff/mob_cow_say2.ogg",
-    "/__l5e/assets-v1/868814a1-d13c-45e1-9320-b72b98c72c90/mob_cow_say3.ogg",
-    "/__l5e/assets-v1/166bc1db-9e45-4aa4-8970-b84db753a540/mob_cow_say4.ogg"
+    "/__l5e/assets-v1/5bf4f55d-55a7-4627-8b6e-68c40fbf5d59/mob_cow_say1.ogg",
+    "/__l5e/assets-v1/c8c29fce-b728-4432-bd33-7adecfbc76a0/mob_cow_say2.ogg",
+    "/__l5e/assets-v1/54676bea-5175-4f51-8839-a3acb4e8c3a2/mob_cow_say3.ogg",
+    "/__l5e/assets-v1/5ea08ecd-5c5b-4dce-85aa-829b3e584949/mob_cow_say4.ogg"
   ],
   "hurt.cow": [
-    "/__l5e/assets-v1/3a3e0205-c579-4f6c-a49b-8d6f4e0a818a/mob_cow_hurt1.ogg",
-    "/__l5e/assets-v1/46666707-7fda-49e3-9e06-a727d8991a0a/mob_cow_hurt2.ogg",
-    "/__l5e/assets-v1/4c2ce822-e757-47c1-80a1-81f63d1bc36f/mob_cow_hurt3.ogg"
+    "/__l5e/assets-v1/97b7b4cd-0ceb-4a26-8d4a-be5aca1418fe/mob_cow_hurt1.ogg",
+    "/__l5e/assets-v1/6d73a7d2-d9cc-48a7-b41b-67e09d7bdc37/mob_cow_hurt2.ogg",
+    "/__l5e/assets-v1/a9b968cd-518b-4817-8094-90c62ca5f511/mob_cow_hurt3.ogg"
   ],
   "mob.pig": [
-    "/__l5e/assets-v1/267de78a-e42e-444d-a0a4-7bb07b061636/mob_pig_say1.ogg",
-    "/__l5e/assets-v1/3b5b1336-152c-44ba-a86a-5abe2d5785c6/mob_pig_say2.ogg",
-    "/__l5e/assets-v1/0e84a0e0-7431-430d-adc8-1c3a9325a7b2/mob_pig_say3.ogg"
+    "/__l5e/assets-v1/d2b93e54-81a9-41c1-9c78-49fd6e414345/mob_pig_say1.ogg",
+    "/__l5e/assets-v1/d4220785-3753-4de8-8c96-946c5d78e963/mob_pig_say2.ogg",
+    "/__l5e/assets-v1/3f46d5d6-fd0a-4bbd-b4a5-8d0ae113c3ab/mob_pig_say3.ogg"
   ],
   "mob.sheep": [
-    "/__l5e/assets-v1/0ea04e8c-14b1-4a6b-ae83-eac86d312018/mob_sheep_say1.ogg",
-    "/__l5e/assets-v1/c0d17d0f-ce22-4c0c-afd8-4f196a2fd796/mob_sheep_say2.ogg",
-    "/__l5e/assets-v1/d1fc3494-58f8-4366-a5e6-6e3676a07b9f/mob_sheep_say3.ogg"
+    "/__l5e/assets-v1/2cfc08b8-cf12-4c48-966f-d189b46fd8fb/mob_sheep_say1.ogg",
+    "/__l5e/assets-v1/772a581f-3e17-4062-9a1e-43580147ed62/mob_sheep_say2.ogg"
   ],
   "mob.chicken": [
-    "/__l5e/assets-v1/3a31db4d-e19a-4b4e-a3ef-71ae7dd420b7/mob_chicken_say1.ogg",
-    "/__l5e/assets-v1/c70f812d-2eae-4956-88de-9e56e388dde9/mob_chicken_say2.ogg",
-    "/__l5e/assets-v1/f956fc40-f777-41ec-b136-298865283a2c/mob_chicken_say3.ogg"
+    "/__l5e/assets-v1/7019237d-dce2-4a6f-88ca-44b15d6086b4/mob_chicken_say1.ogg",
+    "/__l5e/assets-v1/2289d72b-3871-49d9-b437-fe0793a4a669/mob_chicken_say2.ogg"
   ],
   "hurt.chicken": [
-    "/__l5e/assets-v1/27b60849-4f5e-4b45-b715-9ecb95b7cbee/mob_chicken_hurt1.ogg",
-    "/__l5e/assets-v1/a17b55e0-d44e-4c9a-8faa-1e5cd8090cd2/mob_chicken_hurt2.ogg"
+    "/__l5e/assets-v1/680bba70-adb6-44b8-ab5e-6b1219b3c84a/mob_chicken_hurt1.ogg",
+    "/__l5e/assets-v1/a354ec70-bd24-4e55-b52c-a891108591ee/mob_chicken_hurt2.ogg"
   ],
   "mob.zombie": [
-    "/__l5e/assets-v1/9d0be374-7264-4cc4-bc98-6c9e63e79797/mob_zombie_say1.ogg",
-    "/__l5e/assets-v1/ec702352-a876-498c-b784-c61882d00101/mob_zombie_say2.ogg",
-    "/__l5e/assets-v1/c65dabe1-f696-4abe-b034-38b3636b87eb/mob_zombie_say3.ogg"
+    "/__l5e/assets-v1/ab1da919-eb59-4ba1-97b2-8981c1ac14ef/mob_zombie_say1.ogg",
+    "/__l5e/assets-v1/02c5c127-a980-4689-a0ee-6f3bff712428/mob_zombie_say3.ogg"
   ],
   "hurt.zombie": [
-    "/__l5e/assets-v1/d519f5a6-0e1a-4627-82e5-e0dd393c1bfc/mob_zombie_hurt1.ogg",
-    "/__l5e/assets-v1/b611091e-2235-4ed8-b857-69f37d9a922b/mob_zombie_hurt2.ogg"
+    "/__l5e/assets-v1/1f7bb7ff-8855-4c8e-97fa-b9ddfc78b727/mob_zombie_hurt2.ogg"
   ],
   "mob.skeleton": [
-    "/__l5e/assets-v1/bb0dc92c-2464-4a75-9cd3-52077a321b9a/mob_skeleton_say1.ogg",
-    "/__l5e/assets-v1/745843b9-df46-46fd-9816-82de09d5c5dd/mob_skeleton_say2.ogg",
-    "/__l5e/assets-v1/6d99c9ba-f39e-42c1-8877-91eb460d65ce/mob_skeleton_say3.ogg"
+    "/__l5e/assets-v1/514e7082-a8b3-41cf-a1af-420d767d1209/mob_skeleton_say1.ogg",
+    "/__l5e/assets-v1/2ed5aa85-12a0-4611-a572-ff483b781216/mob_skeleton_say2.ogg",
+    "/__l5e/assets-v1/37e211ea-e667-411b-ae4b-6823ef9a4af2/mob_skeleton_say3.ogg"
   ],
   "hurt.skeleton": [
-    "/__l5e/assets-v1/f85170d1-dca9-44e7-8484-e21c6fff113e/mob_skeleton_hurt1.ogg",
-    "/__l5e/assets-v1/2a885a6c-5c46-4418-8bd1-7549f2b625db/mob_skeleton_hurt2.ogg",
-    "/__l5e/assets-v1/f5f04516-9497-44cd-81c0-d70644418ece/mob_skeleton_hurt3.ogg",
-    "/__l5e/assets-v1/a860dcbd-42c6-435d-8ced-f4d1e4b5280a/mob_skeleton_hurt4.ogg"
+    "/__l5e/assets-v1/d9b33589-e01b-4510-a406-afa80ebde011/mob_skeleton_hurt2.ogg",
+    "/__l5e/assets-v1/f8543ddb-ab77-4ad0-a550-5a914ca522eb/mob_skeleton_hurt4.ogg"
   ],
   "mob.spider": [
-    "/__l5e/assets-v1/a5cc2fac-3606-42bc-964c-f719341fe6d7/mob_spider_say1.ogg",
-    "/__l5e/assets-v1/9b466804-7e9f-43f9-8256-8d1e18a529d9/mob_spider_say2.ogg",
-    "/__l5e/assets-v1/7aa89560-ccb4-4f1d-a95e-7896de221637/mob_spider_say3.ogg",
-    "/__l5e/assets-v1/a89a7997-bea5-40f3-8a03-3fca23011e2b/mob_spider_say4.ogg"
+    "/__l5e/assets-v1/3e49680f-dcc2-4422-b885-be604e1e17c5/mob_spider_say1.ogg",
+    "/__l5e/assets-v1/18a346ef-0e83-469b-a576-515510fbe23a/mob_spider_say2.ogg",
+    "/__l5e/assets-v1/4a5cfc0f-20ed-487b-b38e-ee50fbcda115/mob_spider_say3.ogg",
+    "/__l5e/assets-v1/5a7626b3-2f0c-4035-969b-e667123ceeed/mob_spider_say4.ogg"
   ],
   "mob.creeper": [
-    "/__l5e/assets-v1/434cdb6c-675d-4fbb-a7a6-ee615f6c9bd6/mob_creeper_say1.ogg",
-    "/__l5e/assets-v1/8bbb64d7-0876-4bc1-9143-141b34ae262d/mob_creeper_say2.ogg",
-    "/__l5e/assets-v1/785e0824-0a45-451f-a016-45bba0e32a16/mob_creeper_say3.ogg",
-    "/__l5e/assets-v1/557b5ed4-692f-4205-95e6-5b990b4f3f13/mob_creeper_say4.ogg"
+    "/__l5e/assets-v1/603eba8f-87f8-4f42-a551-1dd9e9156954/mob_creeper_say1.ogg",
+    "/__l5e/assets-v1/e1e24f90-c884-48fc-a6a9-d3b11e572b02/mob_creeper_say2.ogg",
+    "/__l5e/assets-v1/b7980a2e-2d95-40f1-86ae-c7402b530f20/mob_creeper_say3.ogg",
+    "/__l5e/assets-v1/f39c6143-14f2-48e6-8d6e-90ffdfa7b136/mob_creeper_say4.ogg"
   ],
   "music": [
-    "/__l5e/assets-v1/685213a5-e744-4b2f-82a8-ececed85183e/music_game_calm1.ogg",
-    "/__l5e/assets-v1/54164d9b-7fb2-44b5-873a-acdb872930b1/music_game_calm2.ogg",
-    "/__l5e/assets-v1/eeaafc61-a29b-4edb-b907-e49d46e00819/music_game_calm3.ogg",
-    "/__l5e/assets-v1/d8ef808a-7f42-4cbf-bf2d-3f8d6ac8927e/music_game_hal1.ogg",
-    "/__l5e/assets-v1/3c564cc8-a63c-49f9-9938-6cc1fdc7cd42/music_game_hal2.ogg",
-    "/__l5e/assets-v1/92268abe-11fa-429c-b6f4-65cb542d9e7c/music_game_piano1.ogg"
+    "/__l5e/assets-v1/a7308d6c-b61d-46d8-9e9e-ca550b306ca0/music_game_calm1.ogg",
+    "/__l5e/assets-v1/dca38464-0812-4763-bc00-175f5e3b4fe3/music_game_calm2.ogg",
+    "/__l5e/assets-v1/b1251211-490e-4148-8353-4a10cf015dd4/music_game_hal2.ogg",
+    "/__l5e/assets-v1/9e112aa5-9c09-4dd4-a36e-0097147aee5e/music_game_piano1.ogg"
+  ],
+  "death.zombie": [
+    "/__l5e/assets-v1/abbdda37-7c33-4a67-a6d3-f0f5ccdd7f06/mob_zombie_death.ogg"
+  ],
+  "death.skeleton": [
+    "/__l5e/assets-v1/28e0907e-b324-4644-a8c7-456dbf8276d2/mob_skeleton_death.ogg"
+  ],
+  "death.spider": [
+    "/__l5e/assets-v1/158aec7a-2cab-4e7c-95a5-cf84ab96745d/mob_spider_death.ogg"
+  ],
+  "death.creeper": [
+    "/__l5e/assets-v1/a09e0de8-3b24-42cf-93bf-5c3fb9740292/mob_creeper_death.ogg"
+  ],
+  "death.pig": [
+    "/__l5e/assets-v1/303a7f5e-9064-4741-89fe-30752cc93be6/mob_pig_death.ogg"
+  ],
+  "death.cow": [
+    "/__l5e/assets-v1/48cc0159-dec1-4192-a927-6d7a96aab44d/mob_cow_hurt1.ogg"
+  ],
+  "death.sheep": [
+    "/__l5e/assets-v1/cc399977-d8bc-4767-a98d-19e7abdf8af3/mob_sheep_say1.ogg"
+  ],
+  "death.chicken": [
+    "/__l5e/assets-v1/5ce85a38-3f1a-49e3-9a06-242e4621bfe7/mob_chicken_hurt1.ogg"
+  ],
+  "hurt.pig": [
+    "/__l5e/assets-v1/303a7f5e-9064-4741-89fe-30752cc93be6/mob_pig_death.ogg"
+  ],
+  "hurt.sheep": [
+    "/__l5e/assets-v1/cc399977-d8bc-4767-a98d-19e7abdf8af3/mob_sheep_say1.ogg",
+    "/__l5e/assets-v1/dfc15f03-ebc2-4798-ad0a-928dbe642ea3/mob_sheep_say2.ogg"
+  ],
+  "hurt.spider": [
+    "/__l5e/assets-v1/8e7e0697-3d21-4bed-a4a6-c8eae69486a4/mob_spider_say1.ogg"
+  ],
+  "hurt.creeper": [
+    "/__l5e/assets-v1/da82dd3b-1c4a-4fbe-8278-db962d4a5250/mob_creeper_say1.ogg"
+  ],
+  "fall.big": [
+    "/__l5e/assets-v1/16e0f7de-c70b-4ed6-9971-00c7b6b720ec/damage_fallbig.ogg"
+  ],
+  "fall.small": [
+    "/__l5e/assets-v1/992de02f-3842-4867-aa88-f3d14fa470f5/damage_fallsmall.ogg"
+  ],
+  "orb": [
+    "/__l5e/assets-v1/2fad3577-856e-45b2-8013-5fc2cd831e44/random_orb.ogg"
+  ],
+  "levelup": [
+    "/__l5e/assets-v1/77e535b6-5f90-4547-a7c2-0d610b504cf0/random_levelup.ogg"
   ]
 }
