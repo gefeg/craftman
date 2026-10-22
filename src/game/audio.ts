@@ -165,6 +165,10 @@ export const sfx = {
   swing() {
     play("swing.weak", 0.4);
   },
+  /** Real Minecraft item break sound (entity.item.break). */
+  toolBreak() {
+    if (!play("tool.break", 0.9, 1, 0.05)) noise(0.25, 1800, 0.6);
+  },
   /** Real Minecraft attack sounds (entity.player.attack.*). */
   attack(kind: "weak" | "strong" | "crit" | "sweep") {
     const key = kind === "sweep" ? "swing.sweep" : kind === "weak" ? "swing.weak" : "swing.strong";
