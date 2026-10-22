@@ -91,6 +91,8 @@ interface Mob extends Body {
 interface Drop extends Body {
   id: string;
   count: number;
+  /** Remaining durability of a dropped tool, kept when picked up again. */
+  durability?: number;
   mesh: THREE.Object3D;
   age: number;
 }
@@ -103,8 +105,41 @@ interface Arrow {
 
 const stack = (id: string) => ITEMS[id]?.stack ?? 64;
 
+/** Old item ids from earlier saves mapped to the current ITEMS keys. */
+const ITEM_ALIASES: Record<string, string> = {
+  wooden_pickaxe: "wood_pickaxe",
+  wooden_sword: "wood_sword",
+  wooden_axe: "wood_axe",
+  wooden_shovel: "wood_shovel",
+};
+export function normalizeSlot(s: Slot): Slot {
+  if (!s) return null;
+  const id = ITEM_ALIASES[s.id] ?? s.id;
+  const max = ITEMS[id]?.durability;
+  if (max === undefined) return id === s.id ? s : { ...s, id };
+  return { ...s, id, count: 1, durability: Math.max(1, Math.min(max, s.durability ?? max)) };
+}
+
+/**
+ * Minecraft repair: two damaged tools of the same kind in the crafting grid combine into one
+ * with both durabilities added plus a 5% bonus (capped at max).
+ */
+export function repairResult(grid: Slot[], station: Station): (Recipe & { durability: number }) | null {
+  if (station === "furnace") return null;
+  const cells = grid.slice(0, station === "table" ? 9 : 4).filter(Boolean) as NonNullable<Slot>[];
+  if (cells.length !== 2 || cells[0].id !== cells[1].id) return null;
+  const max = ITEMS[cells[0].id]?.durability;
+  if (!max) return null;
+  const sum = (cells[0].durability ?? max) + (cells[1].durability ?? max) + Math.floor(max * 0.05);
+  return { out: cells[0].id, count: 1, needs: {}, durability: Math.min(max, sum) } as Recipe & {
+    durability: number;
+  };
+}
+
 /** Shapeless grid matching: furnace = [input, fuel]; otherwise each filled cell counts as one ingredient. */
 export function matchGrid(grid: Slot[], station: Station): Recipe | null {
+  const repair = repairResult(grid, station);
+  if (repair) return repair;
   if (station === "furnace") {
     const [inp, fuel] = grid;
     if (!inp || fuel?.id !== "coal") return null;
@@ -354,7 +389,9 @@ export class Engine {
 
     const worldData = initialWorld?.worldData;
     this.state = {
-      slots: worldData?.inventory ? [...worldData.inventory] : Array(36).fill(null),
+      slots: worldData?.inventory
+        ? worldData.inventory.map((s: Slot) => normalizeSlot(s))
+        : Array(36).fill(null),
       selected: 0,
       cursor: null,
       hp: worldData?.hp ?? 20,
@@ -1190,33 +1227,28 @@ export class Engine {
   count(id: string) {
     return this.state.slots.reduce((n, s) => n + (s && s.id === id ? s.count : 0), 0);
   }
-  give(id: string, n: number): number {
+  /** Add items to the inventory; tools keep their remaining durability (or start new). */
+  give(id: string, n: number, durability?: number): number {
     const slots = this.state.slots.slice();
     const max = stack(id);
-    const initialDur = ITEMS[id]?.durability;
-    for (let i = 0; i < 36 && n > 0; i++) {
-      const s = slots[i];
-      if (s && s.id === id && s.count < max) {
-        const add = Math.min(n, max - s.count);
-        slots[i] = {
-          id,
-          count: s.count + add,
-          ...(s.durability !== undefined
-            ? { durability: s.durability }
-            : initialDur !== undefined
-              ? { durability: initialDur }
-              : {}),
-        };
-        n -= add;
+    const maxDur = ITEMS[id]?.durability;
+    if (maxDur === undefined) {
+      for (let i = 0; i < 36 && n > 0; i++) {
+        const s = slots[i];
+        if (s && s.id === id && s.count < max) {
+          const add = Math.min(n, max - s.count);
+          slots[i] = { ...s, count: s.count + add };
+          n -= add;
+        }
       }
     }
     for (let i = 0; i < 36 && n > 0; i++)
       if (!slots[i]) {
-        const add = Math.min(n, max);
+        const add = maxDur !== undefined ? 1 : Math.min(n, max);
         slots[i] = {
           id,
           count: add,
-          ...(initialDur !== undefined ? { durability: initialDur } : {}),
+          ...(maxDur !== undefined ? { durability: durability ?? maxDur } : {}),
         };
         n -= add;
       }
@@ -1250,8 +1282,7 @@ export class Engine {
     const slots = this.state.slots.slice();
     if (nextDur <= 0) {
       slots[i] = null;
-      sfx.brk("glass");
-      sfx.pop();
+      sfx.toolBreak();
       const breakMsg = `¡Tu ${it.name} se ha roto!`;
       this.toast(breakMsg);
       if (this.onChatMessage) {
@@ -1404,19 +1435,20 @@ export class Engine {
       }
     } else if (!s) {
       if (right) {
-        slots[i] = { id: c.id, count: 1 };
-        this.state.cursor = c.count > 1 ? { id: c.id, count: c.count - 1 } : null;
+        slots[i] = { ...c, count: 1 };
+        this.state.cursor = c.count > 1 ? { ...c, count: c.count - 1 } : null;
       } else {
         slots[i] = c;
         this.state.cursor = null;
       }
-    } else if (s.id === c.id) {
+    } else if (s.id === c.id && stack(s.id) > 1) {
       const max = stack(s.id);
       const add = Math.min(right ? 1 : c.count, max - s.count);
-      slots[i] = { id: s.id, count: s.count + add };
+      slots[i] = { ...s, count: s.count + add };
       const left = c.count - add;
-      this.state.cursor = left > 0 ? { id: c.id, count: left } : null;
+      this.state.cursor = left > 0 ? { ...c, count: left } : null;
     } else {
+      // Different items or non-stackable tools: swap (keeps each tool's durability)
       slots[i] = c;
       this.state.cursor = s;
     }
@@ -1439,14 +1471,17 @@ export class Engine {
     return matchGrid(this.state.grid, this.state.station);
   }
   takeResult() {
-    const r = this.gridResult();
+    const r = this.gridResult() as (Recipe & { durability?: number }) | null;
     if (!r) return;
     const c = this.state.cursor;
     const initialDur = ITEMS[r.out]?.durability;
+    // Tools don't stack: the cursor must be empty; other items must match and fit
+    if (c && (initialDur !== undefined || c.id !== r.out || c.count + r.count > stack(r.out))) return;
+    const dur = r.durability ?? initialDur;
     this.state.cursor = {
       id: r.out,
       count: (c?.count ?? 0) + r.count,
-      ...(initialDur !== undefined ? { durability: initialDur } : {}),
+      ...(dur !== undefined ? { durability: dur } : {}),
     };
     const grid = this.state.grid.slice();
     if (this.state.station === "furnace") {
@@ -1516,8 +1551,8 @@ export class Engine {
     this.state.grid = Array(9).fill(null);
     for (const c of back)
       if (c) {
-        const left = this.give(c.id, c.count);
-        if (left) this.spawnDrop(c.id, left, this.eye());
+        const left = this.give(c.id, c.count, c.durability);
+        if (left) this.spawnDrop(c.id, left, this.eye(), c.durability);
       }
     this.state.ui = "none";
     this.state.station = null;
@@ -1527,8 +1562,9 @@ export class Engine {
   dropHeld() {
     const id = this.held();
     if (!id) return;
+    const dur = this.state.slots[this.state.selected]?.durability;
     this.consumeHeld();
-    const d = this.spawnDrop(id, 1, this.eye().add(this.look().multiplyScalar(0.6)));
+    const d = this.spawnDrop(id, 1, this.eye().add(this.look().multiplyScalar(0.6)), dur);
     d.vel.copy(this.look().multiplyScalar(6));
     d.vel.y += 2;
     d.age = -1;
@@ -1853,13 +1889,14 @@ export class Engine {
       }
   }
 
-  spawnDrop(id: string, count: number, pos: THREE.Vector3): Drop {
+  spawnDrop(id: string, count: number, pos: THREE.Vector3, durability?: number): Drop {
     const mesh = this.itemMesh(id, 0.28);
     mesh.position.copy(pos);
     this.scene.add(mesh);
     const d: Drop = {
       id,
       count,
+      ...(durability !== undefined ? { durability } : {}),
       mesh,
       age: 0,
       pos: pos.clone(),
@@ -1944,7 +1981,13 @@ export class Engine {
   die() {
     this.state.dead = true;
     for (const s of this.state.slots)
-      if (s) this.spawnDrop(s.id, s.count, this.player.pos.clone().add(new THREE.Vector3(0, 1, 0)));
+      if (s)
+        this.spawnDrop(
+          s.id,
+          s.count,
+          this.player.pos.clone().add(new THREE.Vector3(0, 1, 0)),
+          s.durability,
+        );
     this.state.slots = Array(36).fill(null);
     this.safeExitLock();
     this.emit();
@@ -2302,7 +2345,8 @@ export class Engine {
             const heldId = this.held();
             const heldIt = heldId ? ITEMS[heldId] : undefined;
             const durCost = heldIt?.tool === "sword" ? 2 : 1;
-            this.damageHeldTool(durCost);
+            // Like Minecraft, instantly-broken blocks (flowers, grass, torches) don't wear tools
+            if ((BLOCKS[hit.id]?.hardness ?? 0) > 0.05) this.damageHeldTool(durCost);
           }
         }
       } else this.breakProgress = 0;
@@ -2737,7 +2781,7 @@ export class Engine {
       if (d.age > 0.6 && dist < 1.8 && !this.state.dead) {
         d.pos.lerp(new THREE.Vector3(p.x, p.y + 0.6, p.z), 1 - Math.exp(-12 * dt));
         if (dist < 0.8) {
-          const left = this.give(d.id, d.count);
+          const left = this.give(d.id, d.count, d.durability);
           if (left === 0) {
             this.scene.remove(d.mesh);
             this.drops = this.drops.filter((x) => x !== d);
