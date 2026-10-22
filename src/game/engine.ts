@@ -2329,7 +2329,8 @@ export class Engine {
         this.emit();
       }
     }
-    if (this.mouseL && playing) this.attack();
+    // Holding click keeps hitting mobs, but only once the attack cooldown has fully recharged
+    if (this.mouseL && playing && this.attackCd <= 0 && this.rayMob()) this.attack();
 
     // hand
     this.updateHand(dt);
