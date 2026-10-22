@@ -180,5 +180,54 @@
     "/__l5e/assets-v1/dca38464-0812-4763-bc00-175f5e3b4fe3/music_game_calm2.ogg",
     "/__l5e/assets-v1/b1251211-490e-4148-8353-4a10cf015dd4/music_game_hal2.ogg",
     "/__l5e/assets-v1/9e112aa5-9c09-4dd4-a36e-0097147aee5e/music_game_piano1.ogg"
+  ],
+  "death.zombie": [
+    "/__l5e/assets-v1/abbdda37-7c33-4a67-a6d3-f0f5ccdd7f06/mob_zombie_death.ogg"
+  ],
+  "death.skeleton": [
+    "/__l5e/assets-v1/28e0907e-b324-4644-a8c7-456dbf8276d2/mob_skeleton_death.ogg"
+  ],
+  "death.spider": [
+    "/__l5e/assets-v1/158aec7a-2cab-4e7c-95a5-cf84ab96745d/mob_spider_death.ogg"
+  ],
+  "death.creeper": [
+    "/__l5e/assets-v1/a09e0de8-3b24-42cf-93bf-5c3fb9740292/mob_creeper_death.ogg"
+  ],
+  "death.pig": [
+    "/__l5e/assets-v1/303a7f5e-9064-4741-89fe-30752cc93be6/mob_pig_death.ogg"
+  ],
+  "death.cow": [
+    "/__l5e/assets-v1/48cc0159-dec1-4192-a927-6d7a96aab44d/mob_cow_hurt1.ogg"
+  ],
+  "death.sheep": [
+    "/__l5e/assets-v1/cc399977-d8bc-4767-a98d-19e7abdf8af3/mob_sheep_say1.ogg"
+  ],
+  "death.chicken": [
+    "/__l5e/assets-v1/5ce85a38-3f1a-49e3-9a06-242e4621bfe7/mob_chicken_hurt1.ogg"
+  ],
+  "hurt.pig": [
+    "/__l5e/assets-v1/303a7f5e-9064-4741-89fe-30752cc93be6/mob_pig_death.ogg"
+  ],
+  "hurt.sheep": [
+    "/__l5e/assets-v1/cc399977-d8bc-4767-a98d-19e7abdf8af3/mob_sheep_say1.ogg",
+    "/__l5e/assets-v1/dfc15f03-ebc2-4798-ad0a-928dbe642ea3/mob_sheep_say2.ogg"
+  ],
+  "hurt.spider": [
+    "/__l5e/assets-v1/8e7e0697-3d21-4bed-a4a6-c8eae69486a4/mob_spider_say1.ogg"
+  ],
+  "hurt.creeper": [
+    "/__l5e/assets-v1/da82dd3b-1c4a-4fbe-8278-db962d4a5250/mob_creeper_say1.ogg"
+  ],
+  "fall.big": [
+    "/__l5e/assets-v1/16e0f7de-c70b-4ed6-9971-00c7b6b720ec/damage_fallbig.ogg"
+  ],
+  "fall.small": [
+    "/__l5e/assets-v1/992de02f-3842-4867-aa88-f3d14fa470f5/damage_fallsmall.ogg"
+  ],
+  "orb": [
+    "/__l5e/assets-v1/2fad3577-856e-45b2-8013-5fc2cd831e44/random_orb.ogg"
+  ],
+  "levelup": [
+    "/__l5e/assets-v1/77e535b6-5f90-4547-a7c2-0d610b504cf0/random_levelup.ogg"
   ]
 }
