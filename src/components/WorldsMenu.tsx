@@ -664,14 +664,9 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
             {/* Section 1: Mundos Configurados como Servidor */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-2xl font-bold text-yellow-300 tracking-wide flex items-center gap-2">
-                  <span>👑</span> TUS SERVIDORES (Mundos convertidos a Servidor)
-                </h3>
-                <span className="text-sm text-neutral-400">
-                  {serverWorlds.length} servidor(es) creados
-                </span>
-              </div>
+              <h3 className="text-2xl font-bold text-white tracking-wide mb-3 drop-shadow-[2px_2px_0_#000]">
+                TUS SERVIDORES
+              </h3>
 
               {serverWorlds.length === 0 ? (
                 <div className="bg-[#202020] border-2 border-black/30 p-6 text-center text-neutral-400">
@@ -743,38 +738,28 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 <div className="grid grid-cols-1 gap-2">
                   {publicServers.map((ps) => {
                     const online = isOnline(ps);
-                    const mine = !!getOwnerToken(ps.address);
                     return (
                       <div
                         key={ps.address}
-                        className="flex flex-col sm:flex-row items-stretch justify-between bg-[#242424] hover:bg-[#2b2b2b] border-2 border-black/50 p-3 gap-3"
+                        className="flex items-center justify-between bg-[#262626] border-2 border-black/60 p-3 gap-4 shadow-[2px_2px_0_#000000]"
                       >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <div className="w-16 h-16 bg-[#181818] border-2 border-black/40 flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-16 h-16 bg-[#161616] border-2 border-black flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
                             <ServerIcon icon={ps.icon} className="w-full h-full" />
                           </div>
-                          <div className="min-w-0">
-                            <h4 className="text-2xl font-bold text-white tracking-wide truncate">
-                              {ps.name}
-                              {ps.has_password && <span className="ml-2 text-amber-300">🔒</span>}
-                            </h4>
-                            {ps.motd && <p className="text-base text-neutral-300 truncate">{ps.motd}</p>}
-                            <div className="flex flex-wrap items-center gap-2 text-base mt-0.5">
-                              <span className="font-mono text-cyan-300 bg-black/40 px-2">{ps.address}</span>
-                              <span className={online ? "text-emerald-400 font-bold" : "text-neutral-500"}>
-                                {online ? "● En línea" : "○ Desconectado"}
-                              </span>
-                              <span className="text-neutral-400 text-sm">
-                                · Dueño: {ps.owner_name}
-                                {mine ? " (tú)" : ""}
-                              </span>
-                            </div>
-                          </div>
+                          <span className="font-mono text-2xl text-white truncate flex items-center gap-2">
+                            <span
+                              className={`inline-block w-3 h-3 flex-shrink-0 ${online ? "bg-emerald-400" : "bg-neutral-600"}`}
+                              title={online ? "En línea" : "Desconectado"}
+                            />
+                            {ps.address.toLowerCase()}
+                            {ps.has_password && <span title="Con clave">🔒</span>}
+                          </span>
                         </div>
                         <button
                           type="button"
                           disabled={joinBusy}
-                          className="mc-button text-2xl py-2 px-6 min-w-0 bg-[#3a752a] text-white self-center"
+                          className="bedrock-btn bedrock-btn-green text-2xl px-6 w-auto flex-shrink-0"
                           onClick={() => {
                             sfx.click();
                             handlePublicJoin(ps.address, ps.name);
