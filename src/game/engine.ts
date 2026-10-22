@@ -1225,33 +1225,28 @@ export class Engine {
   count(id: string) {
     return this.state.slots.reduce((n, s) => n + (s && s.id === id ? s.count : 0), 0);
   }
-  give(id: string, n: number): number {
+  /** Add items to the inventory; tools keep their remaining durability (or start new). */
+  give(id: string, n: number, durability?: number): number {
     const slots = this.state.slots.slice();
     const max = stack(id);
-    const initialDur = ITEMS[id]?.durability;
-    for (let i = 0; i < 36 && n > 0; i++) {
-      const s = slots[i];
-      if (s && s.id === id && s.count < max) {
-        const add = Math.min(n, max - s.count);
-        slots[i] = {
-          id,
-          count: s.count + add,
-          ...(s.durability !== undefined
-            ? { durability: s.durability }
-            : initialDur !== undefined
-              ? { durability: initialDur }
-              : {}),
-        };
-        n -= add;
+    const maxDur = ITEMS[id]?.durability;
+    if (maxDur === undefined) {
+      for (let i = 0; i < 36 && n > 0; i++) {
+        const s = slots[i];
+        if (s && s.id === id && s.count < max) {
+          const add = Math.min(n, max - s.count);
+          slots[i] = { ...s, count: s.count + add };
+          n -= add;
+        }
       }
     }
     for (let i = 0; i < 36 && n > 0; i++)
       if (!slots[i]) {
-        const add = Math.min(n, max);
+        const add = maxDur !== undefined ? 1 : Math.min(n, max);
         slots[i] = {
           id,
           count: add,
-          ...(initialDur !== undefined ? { durability: initialDur } : {}),
+          ...(maxDur !== undefined ? { durability: durability ?? maxDur } : {}),
         };
         n -= add;
       }
