@@ -14,7 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      mp_blocks: {
+        Row: {
+          address: string
+          block_id: number
+          updated_at: string
+          x: number
+          y: number
+          z: number
+        }
+        Insert: {
+          address: string
+          block_id: number
+          updated_at?: string
+          x: number
+          y: number
+          z: number
+        }
+        Update: {
+          address?: string
+          block_id?: number
+          updated_at?: string
+          x?: number
+          y?: number
+          z?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_blocks_address_fkey"
+            columns: ["address"]
+            isOneToOne: false
+            referencedRelation: "mp_servers"
+            referencedColumns: ["address"]
+          },
+        ]
+      }
+      mp_servers: {
+        Row: {
+          address: string
+          banned: string[]
+          created_at: string
+          has_password: boolean
+          icon: string
+          last_seen: string
+          motd: string
+          name: string
+          owner_name: string
+          owner_token_hash: string
+          password_hash: string | null
+          seed: number
+        }
+        Insert: {
+          address: string
+          banned?: string[]
+          created_at?: string
+          has_password?: boolean
+          icon?: string
+          last_seen?: string
+          motd?: string
+          name: string
+          owner_name?: string
+          owner_token_hash: string
+          password_hash?: string | null
+          seed: number
+        }
+        Update: {
+          address?: string
+          banned?: string[]
+          created_at?: string
+          has_password?: boolean
+          icon?: string
+          last_seen?: string
+          motd?: string
+          name?: string
+          owner_name?: string
+          owner_token_hash?: string
+          password_hash?: string | null
+          seed?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
