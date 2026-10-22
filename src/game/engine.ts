@@ -1435,19 +1435,20 @@ export class Engine {
       }
     } else if (!s) {
       if (right) {
-        slots[i] = { id: c.id, count: 1 };
-        this.state.cursor = c.count > 1 ? { id: c.id, count: c.count - 1 } : null;
+        slots[i] = { ...c, count: 1 };
+        this.state.cursor = c.count > 1 ? { ...c, count: c.count - 1 } : null;
       } else {
         slots[i] = c;
         this.state.cursor = null;
       }
-    } else if (s.id === c.id) {
+    } else if (s.id === c.id && stack(s.id) > 1) {
       const max = stack(s.id);
       const add = Math.min(right ? 1 : c.count, max - s.count);
-      slots[i] = { id: s.id, count: s.count + add };
+      slots[i] = { ...s, count: s.count + add };
       const left = c.count - add;
-      this.state.cursor = left > 0 ? { id: c.id, count: left } : null;
+      this.state.cursor = left > 0 ? { ...c, count: left } : null;
     } else {
+      // Different items or non-stackable tools: swap (keeps each tool's durability)
       slots[i] = c;
       this.state.cursor = s;
     }
