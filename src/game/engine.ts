@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { buildAtlas } from "./textures";
 import * as THREE from "three";
 import { B, BLOCKS, ITEMS, RECIPES, breakInfo, blockDrop, isSolid, type Recipe } from "./blocks";

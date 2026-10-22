@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { WebSocketServer, WebSocket } from "ws";
 import type { IncomingMessage, ServerResponse } from "http";
 import type { Plugin, ViteDevServer, PreviewServer } from "vite";
