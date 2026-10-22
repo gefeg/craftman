@@ -1,0 +1,944 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Engine, type GameState, type Slot } from "@/game/engine";
+import { BLOCKS, ITEMS, ATLAS_COLS, ATLAS_ROWS } from "@/game/blocks";
+import { itemIconURL } from "@/game/icons";
+import { AdminPanel, Chat, ChatFeed } from "./AdminTools";
+import { PackSprite, packItemName } from "./PackSprite";
+import { PlayerPreview } from "./PlayerPreview";
+import { Button } from "./ui/button";
+import { MainMenu } from "./MainMenu";
+import { LoadingScreen } from "./LoadingScreen";
+import { SettingsMenu } from "./SettingsMenu";
+import { saveWorld, createNewWorldRecord, type WorldRecord } from "@/game/worldsDb";
+import { startMusic, stopAudio, sfx } from "@/game/audio";
+import { getStoredPlayerName } from "@/game/skinStorage";
+import { SERVER_ICONS, getServerIconEmoji } from "./WorldsMenu";
+import guiInventory from "@/assets/gui_inventory.png.asset.json";
+import guiTable from "@/assets/gui_crafting_table.png.asset.json";
+import guiFurnace from "@/assets/gui_furnace.png.asset.json";
+
+function Face({ tile, cls }: { tile: number; cls: string }) {
+  const col = tile % ATLAS_COLS,
+    row = Math.floor(tile / ATLAS_COLS);
+  return (
+    <div
+      className={`mc-face ${cls}`}
+      style={{
+        backgroundPosition: `${(col / (ATLAS_COLS - 1)) * 100}% ${(row / (ATLAS_ROWS - 1)) * 100}%`,
+      }}
+    />
+  );
+}
+
+export function ItemIcon({ id }: { id: string }) {
+  const it = ITEMS[id];
+  const sprite = packItemName(id);
+  const url = useMemo(() => (it?.block || sprite ? null : itemIconURL(id)), [id, it, sprite]);
+  if (it?.block) {
+    const t = BLOCKS[it.block].tex;
+    return (
+      <div className="mc-cube-wrap">
+        <div className="mc-cube">
+          <Face tile={t[0]} cls="mc-top" />
+          <Face tile={t[1]} cls="mc-left" />
+          <Face tile={t[1]} cls="mc-front" />
+        </div>
+      </div>
+    );
+  }
+  if (sprite) return <PackSprite name={sprite} width={32} height={32} />;
+  return url ? <img src={url} alt={it?.name} className="mc-item-img" draggable={false} /> : null;
+}
+
+function DurabilityBar({ slot }: { slot: Slot }) {
+  if (!slot) return null;
+  const it = ITEMS[slot.id];
+  if (!it?.durability) return null;
+  const max = it.durability;
+  const cur = slot.durability ?? max;
+  if (cur >= max) return null;
+  const pct = Math.max(0, Math.min(1, cur / max));
+  const hue = pct * 120; // 0 red -> 60 yellow -> 120 green
+  return (
+    <div className="mc-durability-track">
+      <div
+        className="mc-durability-fill"
+        style={{
+          width: `${Math.max(6, pct * 100)}%`,
+          backgroundColor: `hsl(${hue}, 100%, 45%)`,
+        }}
+      />
+    </div>
+  );
+}
+
+function SlotView({
+  slot,
+  active,
+  onClick,
+}: {
+  slot: Slot;
+  active?: boolean;
+  onClick?: (right: boolean) => void;
+}) {
+  return (
+    <div
+      className={`mc-slot ${active ? "mc-slot-active" : ""}`}
+      title={
+        slot
+          ? `${ITEMS[slot.id]?.name ?? slot.id}${
+              slot.durability !== undefined && ITEMS[slot.id]?.durability
+                ? ` (${slot.durability}/${ITEMS[slot.id]?.durability})`
+                : ""
+            }`
+          : undefined
+      }
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick?.(e.button === 2);
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {slot && <ItemIcon id={slot.id} />}
+      {slot && slot.count > 1 && <span className="mc-count">{slot.count}</span>}
+      <DurabilityBar slot={slot} />
+    </div>
+  );
+}
+
+function Bar({ value, kind }: { value: number; kind: "heart" | "food" }) {
+  return (
+    <div
+      className="mc-status-bar"
+      role="img"
+      aria-label={`${kind === "heart" ? "Salud" : "Comida"}: ${value}/20`}
+    >
+      {Array.from({ length: 10 }, (_, i) => {
+        const v = value - i * 2;
+        const state = v >= 2 ? "full" : v === 1 ? "half" : "empty";
+        const empty =
+          kind === "heart"
+            ? "gui/sprites/hud/heart/container.png"
+            : "gui/sprites/hud/food_empty.png";
+        const filled =
+          kind === "heart"
+            ? `gui/sprites/hud/heart/${state}.png`
+            : `gui/sprites/hud/food_${state}.png`;
+        return (
+          <span key={i} className="mc-status-icon">
+            <PackSprite name={empty} />
+            {state !== "empty" && <PackSprite name={filled} className="mc-sprite-layer" />}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Game() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [appState, setAppState] = useState<"menu" | "loading" | "playing">("menu");
+  const [activeWorld, setActiveWorld] = useState<WorldRecord | null>(null);
+  const [engine, setEngine] = useState<Engine | null>(null);
+  const [s, setS] = useState<GameState | null>(null);
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [chat, setChat] = useState<{ m: string; t: number }[]>([]);
+  const [showMultiplayerModal, setShowMultiplayerModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const addLog = (m: string) => setChat((c) => [...c.slice(-50), { m, t: Date.now() }]);
+
+  useEffect(() => {
+    if (appState !== "playing" || !activeWorld) return;
+    const canvas = ref.current;
+    if (!canvas) return;
+    const e = new Engine(canvas, activeWorld.seed, activeWorld);
+    let unsub = () => {};
+    e.init().then(() => {
+      unsub = e.subscribe(setS);
+      setEngine(e);
+      e.onChatMessage = addLog;
+      startMusic();
+
+      // If this world is a configured server, immediately start multiplayer hosting!
+      if (activeWorld.isServer && activeWorld.serverConfig) {
+        const address = `${activeWorld.serverConfig.ip}:${activeWorld.serverConfig.port}`;
+        e.isServerOwner = true;
+        e.connectMultiplayer(address, getStoredPlayerName(), true);
+      }
+
+      setTimeout(() => {
+        if (!e.state.locked) e.requestLock();
+      }, 350);
+    });
+    const iv = setInterval(() => e.emit(), 500);
+    return () => {
+      clearInterval(iv);
+      unsub();
+      e.dispose();
+      setEngine(null);
+      setS(null);
+    };
+  }, [appState, activeWorld]);
+
+  const handleStartWorld = (world: WorldRecord) => {
+    setActiveWorld(world);
+    setAppState("loading");
+  };
+
+  const handleLoadingReady = () => {
+    setAppState("playing");
+  };
+
+  const handleJoinServer = (roomCode: string, name: string) => {
+    const tempWorld = createNewWorldRecord(`Servidor ${roomCode}`, "survival", 123456);
+    tempWorld.isServer = true;
+    tempWorld.serverConfig = {
+      ip: roomCode.split(":")[0] || roomCode,
+      port: parseInt(roomCode.split(":")[1] || "19132", 10),
+      icon: "diamond",
+      serverName: `Servidor ${roomCode}`,
+      isOwner: false,
+    };
+    setActiveWorld(tempWorld);
+    setAppState("loading");
+    setTimeout(() => {
+      if (engine) engine.connectMultiplayer(roomCode, name, false);
+    }, 1200);
+  };
+
+  const handleSaveAndQuit = async () => {
+    sfx.click();
+    if (engine && activeWorld) {
+      const thumb = engine.getScreenshot();
+      const worldData = engine.exportWorldData();
+      await saveWorld({
+        ...activeWorld,
+        lastPlayed: Date.now(),
+        thumbnailDataUrl: thumb || activeWorld.thumbnailDataUrl,
+        worldData,
+      });
+    }
+    stopAudio();
+    if (engine) engine.safeExitLock();
+    setAppState("menu");
+    setActiveWorld(null);
+    setEngine(null);
+    setS(null);
+  };
+
+  if (appState === "menu") {
+    return <MainMenu onStartWorld={handleStartWorld} onJoinServer={handleJoinServer} />;
+  }
+
+  if (appState === "loading" && activeWorld) {
+    return <LoadingScreen world={activeWorld} onReady={handleLoadingReady} />;
+  }
+
+  const hour = s ? Math.floor((s.time * 24 + 6) % 24) : 0;
+  const held = s?.slots[s.selected];
+
+  return (
+    <div
+      className="fixed inset-0 select-none overflow-hidden bg-background font-pixel"
+      onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
+    >
+      <canvas ref={ref} className="block h-full w-full" />
+      {!s && (
+        <div className="mc-overlay">
+          <p className="mc-title">Generando mundo…</p>
+        </div>
+      )}
+      {s && (
+        <>
+          <div className="mc-hurt" style={{ opacity: s.hurt * 0.5 }} />
+          {s.locked && <div className="mc-crosshair">+</div>}
+          <div className="mc-info">
+            <div>
+              Día {s.day} · {String(hour).padStart(2, "0")}:00
+            </div>
+            <div>XYZ {s.pos.join(" / ")}</div>
+            {s.target && <div className="opacity-80">{s.target}</div>}
+          </div>
+
+          {/* Top-right multiplayer status & room button */}
+          <div className="fixed top-3 right-3 z-40 flex items-center gap-2">
+            {s.multiplayer?.connected ? (
+              <div className="flex items-center gap-2 bg-black/75 px-3 py-1.5 text-white border-2 border-black text-[1.15rem] shadow-lg">
+                <span className="text-emerald-400 font-bold">● SERVIDOR</span>
+                {activeWorld?.serverConfig?.icon && (
+                  <span>{getServerIconEmoji(activeWorld.serverConfig.icon)}</span>
+                )}
+                <span>
+                  <span className="text-yellow-300 font-mono font-bold tracking-wider">
+                    {s.multiplayer.room}
+                  </span>
+                </span>
+                {engine?.isServerOwner && (
+                  <span className="px-1.5 py-0.2 text-xs font-bold bg-amber-600 text-amber-100 border border-amber-950">
+                    👑 DUEÑO
+                  </span>
+                )}
+                <span className="opacity-75">({s.multiplayer.playerCount} jug.)</span>
+                <button
+                  type="button"
+                  className="mc-badge-btn ml-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(s.multiplayer?.room || "");
+                    engine?.toast("¡Dirección IP:Puerto copiada!");
+                  }}
+                  title="Copiar IP:Puerto del servidor"
+                >
+                  Copiar IP
+                </button>
+                <button
+                  type="button"
+                  className="mc-badge-btn"
+                  onClick={() => {
+                    if (engine) engine.safeExitLock();
+                    setShowMultiplayerModal(true);
+                  }}
+                  title="Ajustes del servidor"
+                >
+                  Servidor
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="mc-badge-btn"
+                onClick={() => {
+                  if (engine) engine.safeExitLock();
+                  setShowMultiplayerModal(true);
+                }}
+              >
+                🌐 Servidor
+              </button>
+            )}
+          </div>
+
+          {s.message && <div className="mc-toast">{s.message}</div>}
+
+          <div
+            className="absolute bottom-3 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5"
+            style={{ transform: "translateX(-50%) scale(1.18)", transformOrigin: "bottom center" }}
+          >
+            {held && <div className="mc-held-name">{ITEMS[held.id]?.name}</div>}
+            <div className="flex w-full items-center justify-between px-1" style={{ gap: "24px" }}>
+              <Bar value={s.hp} kind="heart" />
+              <Bar value={s.food} kind="food" />
+            </div>
+            <div className="mc-hotbar">
+              <PackSprite name="gui/sprites/hud/hotbar.png" className="mc-hotbar-texture" />
+              <div className="mc-hotbar-selection" style={{ left: s.selected * 40 - 2 }}>
+                <PackSprite name="gui/sprites/hud/hotbar_selection.png" />
+              </div>
+              {s.slots.slice(0, 9).map((sl, i) => (
+                <SlotView
+                  key={i}
+                  slot={sl}
+                  active={i === s.selected}
+                  onClick={() => engine?.select(i)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {s.ui === "inventory" && engine && <InventoryUI s={s} engine={engine} mouse={mouse} />}
+          {s.ui === "chat" && engine ? (
+            <Chat engine={engine} log={chat.map((c) => c.m)} onLog={addLog} />
+          ) : (
+            <ChatFeed log={chat} />
+          )}
+          {s.ui === "admin" && engine && <AdminPanel engine={engine} onLog={addLog} />}
+          {s.cursor && (
+            <div
+              className="pointer-events-none fixed z-50 flex items-center justify-center"
+              style={{
+                left: mouse.x - 18,
+                top: mouse.y - 18,
+                width: 36,
+                height: 36,
+                filter: "drop-shadow(2px 2px 0 var(--mc-shadow))",
+              }}
+            >
+              <ItemIcon id={s.cursor.id} />
+              {s.cursor.count > 1 && (
+                <span className="mc-count" style={{ bottom: -2, right: -2 }}>
+                  {s.cursor.count}
+                </span>
+              )}
+              <DurabilityBar slot={s.cursor} />
+            </div>
+          )}
+
+          {!s.locked &&
+            s.ui === "none" &&
+            !s.dead &&
+            !showMultiplayerModal &&
+            !showSettingsModal && (
+              <div
+                className="mc-overlay mc-overlay-soft"
+                onClick={() => {
+                  if (engine) engine.requestLock();
+                }}
+              >
+                <div
+                  className="mc-inworld-bg border-3 border-[#151515] shadow-[inset_2px_2px_0_#454545,inset_-2px_-2px_0_#101010,0_10px_35px_rgba(0,0,0,0.85)] p-6 flex flex-col items-center gap-4 max-w-sm w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h2 className="text-4xl font-bold text-white tracking-wider drop-shadow-[2px_2px_0_#000000]">
+                    JUEGO PAUSADO
+                  </h2>
+                  <div className="mc-inworld-header-sep" />
+
+                  <div className="flex flex-col gap-2.5 w-full">
+                    <Button
+                      variant="ghost"
+                      className="mc-button w-full text-2xl py-2 min-w-0"
+                      onClick={() => {
+                        sfx.click();
+                        engine?.requestLock();
+                      }}
+                    >
+                      Reanudar juego
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      className="mc-button w-full text-2xl py-2 min-w-0"
+                      onClick={() => {
+                        sfx.click();
+                        setShowSettingsModal(true);
+                      }}
+                    >
+                      Ajustes
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      className="mc-button w-full text-2xl py-2 min-w-0"
+                      onClick={() => {
+                        sfx.click();
+                        setShowMultiplayerModal(true);
+                      }}
+                    >
+                      🌐 Multijugador
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      className="mc-button w-full text-2xl py-2 min-w-0 bg-[#873232] hover:bg-[#9e3a3a] text-white"
+                      onClick={handleSaveAndQuit}
+                    >
+                      Guardar y salir
+                    </Button>
+                  </div>
+
+                  <div className="mc-inworld-footer-sep" />
+                  <div className="text-center text-base text-neutral-300 opacity-80 mt-1">
+                    Mundo: <span className="font-bold text-white">{activeWorld?.name}</span> ·
+                    Semilla: {activeWorld?.seed}
+                  </div>
+                </div>
+
+                <div className="mc-help mt-2">
+                  <p>WASD mover · Espacio saltar · Ctrl correr · Shift agacharse</p>
+                  <p>Clic izq. picar/atacar · Clic der. colocar/comer/usar · E inventario</p>
+                </div>
+              </div>
+            )}
+
+          {showSettingsModal && (
+            <SettingsMenu
+              onClose={() => setShowSettingsModal(false)}
+              onSettingsChanged={(newSettings) => engine?.applySettings(newSettings)}
+            />
+          )}
+
+          {showMultiplayerModal && engine && (
+            <MultiplayerModal
+              engine={engine}
+              s={s}
+              onClose={() => setShowMultiplayerModal(false)}
+            />
+          )}
+
+          {engine?.disconnectReason && (
+            <div className="mc-overlay mc-overlay-dead z-50">
+              <div
+                className="mc-inworld-bg border-3 border-red-800 p-6 flex flex-col items-center gap-4 max-w-md w-full text-center shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="text-4xl font-bold text-red-400 drop-shadow-[2px_2px_0_#000000]">
+                  {engine.disconnectReason.includes("baneado")
+                    ? "¡Baneado del Servidor!"
+                    : "¡Expulsado del Servidor!"}
+                </h2>
+                <div className="mc-inworld-header-sep" />
+                <p className="text-xl text-neutral-100 leading-relaxed font-bold">
+                  {engine.disconnectReason}
+                </p>
+                <div className="flex gap-3 mt-3 w-full justify-center">
+                  {!engine.disconnectReason.includes("baneado") && (
+                    <Button
+                      variant="ghost"
+                      className="mc-button text-xl py-2 px-6"
+                      onClick={() => {
+                        if (engine && s.multiplayer?.room) {
+                          engine.connectMultiplayer(
+                            s.multiplayer.room,
+                            getStoredPlayerName(),
+                            false,
+                          );
+                        } else if (engine && activeWorld?.serverConfig) {
+                          const addr = `${activeWorld.serverConfig.ip}:${activeWorld.serverConfig.port}`;
+                          engine.connectMultiplayer(addr, getStoredPlayerName(), false);
+                        }
+                      }}
+                    >
+                      Reconectar
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    className="mc-button text-xl py-2 px-6 bg-[#602525] hover:bg-[#782e2e] text-white"
+                    onClick={handleSaveAndQuit}
+                  >
+                    Salir al menú principal
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+const S = 3; // GUI scale (vanilla GUI pixels -> screen px)
+const GUI_BG = { inventory: guiInventory.url, table: guiTable.url, furnace: guiFurnace.url };
+
+function GuiSlot({
+  x,
+  y,
+  slot,
+  onClick,
+  big,
+}: {
+  x: number;
+  y: number;
+  slot: Slot;
+  onClick: (right: boolean) => void;
+  big?: boolean;
+}) {
+  const size = (big ? 24 : 16) * S,
+    off = big ? -4 * S : 0;
+  return (
+    <div
+      className="mc-gui-slot"
+      style={{ left: x * S + off, top: y * S + off, width: size, height: size }}
+      title={
+        slot
+          ? `${ITEMS[slot.id]?.name ?? slot.id}${
+              slot.durability !== undefined && ITEMS[slot.id]?.durability
+                ? ` (${slot.durability}/${ITEMS[slot.id]?.durability})`
+                : ""
+            }`
+          : undefined
+      }
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick(e.button === 2);
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {slot && (
+        <span className="mc-gui-icon">
+          <ItemIcon id={slot.id} />
+        </span>
+      )}
+      {slot && slot.count > 1 && <span className="mc-count">{slot.count}</span>}
+      <DurabilityBar slot={slot} />
+    </div>
+  );
+}
+
+function InventoryUI({
+  s,
+  engine,
+  mouse,
+}: {
+  s: GameState;
+  engine: Engine;
+  mouse: { x: number; y: number };
+}) {
+  const kind = s.station ?? "inventory";
+  const result = engine.gridResult();
+  const take = () => engine.takeResult();
+  const gridCells: { x: number; y: number; i: number }[] = [];
+  if (kind === "table")
+    for (let i = 0; i < 9; i++)
+      gridCells.push({ x: 30 + (i % 3) * 18, y: 17 + Math.floor(i / 3) * 18, i });
+  else if (kind === "inventory")
+    for (let i = 0; i < 4; i++)
+      gridCells.push({ x: 98 + (i % 2) * 18, y: 18 + Math.floor(i / 2) * 18, i });
+  else gridCells.push({ x: 56, y: 17, i: 0 }, { x: 56, y: 53, i: 1 });
+  const out =
+    kind === "table"
+      ? { x: 124, y: 35 }
+      : kind === "inventory"
+        ? { x: 154, y: 28 }
+        : { x: 116, y: 35 };
+  const title = kind === "table" ? "Mesa de trabajo" : kind === "furnace" ? "Horno" : "Creación";
+  const titlePos = kind === "inventory" ? { x: 97, y: 6 } : { x: 8, y: 6 };
+  return (
+    <div
+      className="mc-overlay mc-overlay-soft"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) engine.closeUI();
+      }}
+    >
+      <div
+        className="mc-gui"
+        style={{
+          width: 176 * S,
+          height: 166 * S,
+          backgroundImage: `url(${GUI_BG[kind]})`,
+          backgroundSize: `${256 * S}px ${256 * S}px`,
+        }}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <span className="mc-gui-label" style={{ left: titlePos.x * S, top: titlePos.y * S - 4 }}>
+          {title}
+        </span>
+        {kind !== "inventory" && (
+          <span className="mc-gui-label" style={{ left: 8 * S, top: 72 * S - 4 }}>
+            Inventario
+          </span>
+        )}
+        {kind === "inventory" && (
+          <div
+            style={{
+              position: "absolute",
+              left: 26 * S,
+              top: 8 * S,
+              width: 51 * S,
+              height: 72 * S,
+              overflow: "hidden",
+              pointerEvents: "none",
+            }}
+          >
+            <PlayerPreview mouse={mouse} />
+          </div>
+        )}
+        {gridCells.map((c) => (
+          <GuiSlot
+            key={c.i}
+            x={c.x}
+            y={c.y}
+            slot={s.grid[c.i]}
+            onClick={(r) => engine.clickGrid(c.i, r)}
+          />
+        ))}
+        <GuiSlot
+          x={out.x}
+          y={out.y}
+          slot={result ? { id: result.out, count: result.count } : null}
+          onClick={take}
+        />
+        {s.slots.slice(9).map((sl, i) => (
+          <GuiSlot
+            key={"m" + i}
+            x={8 + (i % 9) * 18}
+            y={84 + Math.floor(i / 9) * 18}
+            slot={sl}
+            onClick={(r) => engine.clickSlot(i + 9, r)}
+          />
+        ))}
+        {s.slots.slice(0, 9).map((sl, i) => (
+          <GuiSlot
+            key={"h" + i}
+            x={8 + i * 18}
+            y={142}
+            slot={sl}
+            onClick={(r) => engine.clickSlot(i, r)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MultiplayerModal({
+  engine,
+  s,
+  onClose,
+}: {
+  engine: Engine;
+  s: GameState;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<"create" | "join">("create");
+  const [ipInput, setIpInput] = useState("127.0.0.1");
+  const [portInput, setPortInput] = useState("19132");
+  const [iconInput, setIconInput] = useState("diamond");
+  const [connecting, setConnecting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const centralPlayerName = getStoredPlayerName();
+
+  const handleCreateServer = async () => {
+    const cleanIp = ipInput.trim() || "127.0.0.1";
+    const cleanPort = parseInt(portInput.trim(), 10) || 19132;
+    const roomAddress = `${cleanIp}:${cleanPort}`;
+    setError(null);
+    setConnecting(true);
+
+    engine.isServerOwner = true;
+    const ok = await engine.connectMultiplayer(roomAddress, centralPlayerName, true);
+    setConnecting(false);
+    if (!ok) {
+      setError(engine.disconnectReason || "No se pudo iniciar el servidor");
+    } else {
+      onClose();
+    }
+  };
+
+  const handleJoinServer = async () => {
+    const cleanIp = ipInput.trim();
+    const cleanPort = parseInt(portInput.trim(), 10);
+    if (!cleanIp) {
+      setError("Introduce la dirección IP del servidor");
+      return;
+    }
+    if (!cleanPort || isNaN(cleanPort)) {
+      setError("Introduce un puerto válido (ej: 19132)");
+      return;
+    }
+    const roomAddress = `${cleanIp}:${cleanPort}`;
+    setError(null);
+    setConnecting(true);
+
+    const ok = await engine.connectMultiplayer(roomAddress, centralPlayerName, false);
+    setConnecting(false);
+    if (!ok) {
+      setError(engine.disconnectReason || "No se pudo conectar al servidor");
+    } else {
+      onClose();
+    }
+  };
+
+  const handleCopy = () => {
+    if (s.multiplayer?.room) {
+      navigator.clipboard.writeText(s.multiplayer.room);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      engine.toast("¡Dirección copiada al portapapeles!");
+    }
+  };
+
+  return (
+    <div
+      className="mc-modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="mc-modal-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b-2 border-black/40 pb-2 mb-4">
+          <h2 className="text-2xl font-bold text-black tracking-wide flex items-center gap-2">
+            <span>🌐</span> SERVIDOR Y MULTIJUGADOR
+          </h2>
+          <button type="button" className="mc-badge-btn text-base px-2 py-0.5" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        {s.multiplayer?.connected ? (
+          <div className="space-y-4">
+            <div className="p-4 bg-black/10 border-2 border-black/20 text-center space-y-2">
+              <p className="text-lg opacity-80">¡Estás conectado al servidor!</p>
+              <div className="text-3xl font-mono font-bold tracking-widest text-emerald-800 bg-white/70 py-2 px-4 border border-black/30 rounded inline-block">
+                {s.multiplayer.room}
+              </div>
+              <div className="flex justify-center items-center gap-2 flex-wrap">
+                {engine.isServerOwner && (
+                  <span className="px-2 py-0.5 text-sm font-bold bg-amber-600 text-white rounded">
+                    👑 ERES EL DUEÑO DEL SERVIDOR
+                  </span>
+                )}
+                <span className="text-base text-black/80 font-bold">
+                  Jugadores en línea: {s.multiplayer.playerCount}
+                </span>
+              </div>
+              {engine.isServerOwner && (
+                <p className="text-xs text-black/70 italic mt-1">
+                  Tienes acceso a los comandos exclusivos de dueño: /ban &lt;jugador&gt; y /kick
+                  &lt;jugador&gt;
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                className="mc-button flex-1 text-xl py-2"
+                onClick={handleCopy}
+              >
+                {copied ? "✓ ¡Copiado!" : "📋 Copiar Dirección IP:Puerto"}
+              </Button>
+              <Button
+                variant="ghost"
+                className="mc-button flex-1 text-xl py-2 bg-red-800 hover:bg-red-700 text-white"
+                onClick={() => {
+                  engine.disconnectMultiplayer();
+                  engine.toast("Desconectado del servidor");
+                }}
+              >
+                🔌 Desconectar
+              </Button>
+            </div>
+
+            <Button
+              variant="ghost"
+              className="mc-button w-full text-xl py-2 mt-2"
+              onClick={onClose}
+            >
+              Volver al juego
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Tabs for Create vs Join */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className={`py-2 text-xl font-bold border-2 border-black ${
+                  tab === "create"
+                    ? "bg-[#3a752a] text-yellow-200 border-yellow-300"
+                    : "bg-[#404040] text-neutral-300"
+                }`}
+                onClick={() => {
+                  sfx.click();
+                  setTab("create");
+                }}
+              >
+                🚀 Crear Servidor
+              </button>
+              <button
+                type="button"
+                className={`py-2 text-xl font-bold border-2 border-black ${
+                  tab === "join"
+                    ? "bg-[#3a752a] text-yellow-200 border-yellow-300"
+                    : "bg-[#404040] text-neutral-300"
+                }`}
+                onClick={() => {
+                  sfx.click();
+                  setTab("join");
+                }}
+              >
+                ➡️ Unirse con IP y Puerto
+              </button>
+            </div>
+
+            <div className="bg-black/10 p-2.5 border border-black/20 text-sm text-black/80">
+              Jugador: <span className="font-bold text-black font-mono">[{centralPlayerName}]</span>{" "}
+              (guardado en la Configuración Central)
+            </div>
+
+            {error && (
+              <div className="p-2 bg-red-500/20 border border-red-600 text-red-900 text-base font-bold">
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-base font-bold text-black/80 mb-1">
+                  IP del servidor:
+                </label>
+                <input
+                  type="text"
+                  className="mc-input-field font-mono"
+                  value={ipInput}
+                  maxLength={40}
+                  onChange={(e) => setIpInput(e.target.value)}
+                  placeholder="127.0.0.1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-base font-bold text-black/80 mb-1">Puerto:</label>
+                <input
+                  type="number"
+                  className="mc-input-field font-mono"
+                  value={portInput}
+                  min="1"
+                  max="65535"
+                  onChange={(e) => setPortInput(e.target.value)}
+                  placeholder="19132"
+                />
+              </div>
+            </div>
+
+            {tab === "create" && (
+              <div>
+                <label className="block text-base font-bold text-black/80 mb-1">
+                  Icono del servidor:
+                </label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {SERVER_ICONS.map((ic) => (
+                    <button
+                      key={ic.id}
+                      type="button"
+                      className={`p-1.5 flex flex-col items-center justify-center border-2 ${
+                        iconInput === ic.id
+                          ? "bg-amber-100 border-black shadow"
+                          : "bg-white/40 border-black/30"
+                      }`}
+                      onClick={() => setIconInput(ic.id)}
+                    >
+                      <span className="text-xl">{ic.emoji}</span>
+                      <span className="text-[10px] truncate">{ic.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                className="mc-button text-base py-1 px-4 min-w-0"
+                onClick={onClose}
+              >
+                Cancelar
+              </Button>
+              {tab === "create" ? (
+                <Button
+                  variant="ghost"
+                  className="mc-button text-lg py-2 px-6 min-w-0 bg-[#3a752a] text-white font-bold"
+                  disabled={connecting}
+                  onClick={handleCreateServer}
+                >
+                  {connecting ? "Iniciando…" : "🚀 Iniciar como Dueño"}
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  className="mc-button text-lg py-2 px-6 min-w-0 bg-[#3a752a] text-white font-bold"
+                  disabled={connecting}
+                  onClick={handleJoinServer}
+                >
+                  {connecting ? "Conectando…" : "➡️ Entrar al Servidor"}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
