@@ -103,8 +103,41 @@ interface Arrow {
 
 const stack = (id: string) => ITEMS[id]?.stack ?? 64;
 
+/** Old item ids from earlier saves mapped to the current ITEMS keys. */
+const ITEM_ALIASES: Record<string, string> = {
+  wooden_pickaxe: "wood_pickaxe",
+  wooden_sword: "wood_sword",
+  wooden_axe: "wood_axe",
+  wooden_shovel: "wood_shovel",
+};
+export function normalizeSlot(s: Slot): Slot {
+  if (!s) return null;
+  const id = ITEM_ALIASES[s.id] ?? s.id;
+  const max = ITEMS[id]?.durability;
+  if (max === undefined) return id === s.id ? s : { ...s, id };
+  return { ...s, id, count: 1, durability: Math.max(1, Math.min(max, s.durability ?? max)) };
+}
+
+/**
+ * Minecraft repair: two damaged tools of the same kind in the crafting grid combine into one
+ * with both durabilities added plus a 5% bonus (capped at max).
+ */
+export function repairResult(grid: Slot[], station: Station): (Recipe & { durability: number }) | null {
+  if (station === "furnace") return null;
+  const cells = grid.slice(0, station === "table" ? 9 : 4).filter(Boolean) as NonNullable<Slot>[];
+  if (cells.length !== 2 || cells[0].id !== cells[1].id) return null;
+  const max = ITEMS[cells[0].id]?.durability;
+  if (!max) return null;
+  const sum = (cells[0].durability ?? max) + (cells[1].durability ?? max) + Math.floor(max * 0.05);
+  return { out: cells[0].id, count: 1, needs: {}, durability: Math.min(max, sum) } as Recipe & {
+    durability: number;
+  };
+}
+
 /** Shapeless grid matching: furnace = [input, fuel]; otherwise each filled cell counts as one ingredient. */
 export function matchGrid(grid: Slot[], station: Station): Recipe | null {
+  const repair = repairResult(grid, station);
+  if (repair) return repair;
   if (station === "furnace") {
     const [inp, fuel] = grid;
     if (!inp || fuel?.id !== "coal") return null;
