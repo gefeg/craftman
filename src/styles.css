@@ -142,3 +142,629 @@
     color: var(--color-foreground);
   }
 }
+
+/* ===== VoxelCraft game design system ===== */
+:root {
+  --mc-panel: oklch(0.78 0 0);
+  --mc-panel-light: oklch(0.97 0 0);
+  --mc-panel-dark: oklch(0.42 0 0);
+  --mc-slot: oklch(0.55 0 0);
+  --mc-slot-dark: oklch(0.32 0 0);
+  --mc-text: oklch(0.98 0 0);
+  --mc-text-dark: oklch(0.25 0 0);
+  --mc-shadow: oklch(0.2 0 0 / 0.75);
+  --mc-heart: oklch(0.6 0.23 27);
+  --mc-food: oklch(0.62 0.13 55);
+  --mc-empty: oklch(0.2 0 0 / 0.55);
+  --mc-overlay: oklch(0.12 0.02 250 / 0.6);
+  --mc-dead: oklch(0.35 0.15 25 / 0.6);
+  --mc-accent: oklch(0.82 0.17 125);
+  --mc-hurt: oklch(0.55 0.25 27);
+}
+@theme inline {
+  --font-pixel: "VT323", ui-monospace, monospace;
+}
+
+@layer components {
+  .mc-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    background: var(--mc-overlay);
+    color: var(--mc-text);
+    z-index: 30;
+  }
+  .mc-overlay-soft {
+    background: oklch(0 0 0 / 0.45);
+  }
+  .mc-overlay-dead {
+    background: var(--mc-dead);
+  }
+  .mc-title {
+    font-size: 4.5rem;
+    letter-spacing: 0.08em;
+    color: var(--mc-text);
+    text-shadow: 4px 4px 0 var(--mc-shadow);
+  }
+  .mc-button {
+    min-width: 18rem;
+    padding: 0.5rem 1rem;
+    font-size: 1.75rem;
+    color: #ffffff;
+    border: 4px solid transparent;
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/button.png") 4 fill / 4px stretch;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    text-shadow: 2px 2px 0 #1b1b1b;
+    cursor: pointer;
+    transition: transform 0.05s ease-out;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .mc-button:hover {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/button_highlighted.png") 4 fill / 4px stretch;
+    color: #ffffa0;
+  }
+  .mc-button:active {
+    transform: translateY(2px);
+  }
+  .mc-button:disabled {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/button_disabled.png") 4 fill / 4px stretch;
+    color: #a0a0a0;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .mc-help {
+    text-align: center;
+    font-size: 1.25rem;
+    line-height: 1.4;
+    text-shadow: 2px 2px 0 var(--mc-shadow);
+  }
+  .mc-crosshair {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -52%);
+    font-size: 2.2rem;
+    color: var(--mc-text);
+    mix-blend-mode: difference;
+    pointer-events: none;
+  }
+  .mc-info {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.5rem;
+    font-size: 1.35rem;
+    color: var(--mc-text);
+    text-shadow: 2px 2px 0 var(--mc-shadow);
+    pointer-events: none;
+  }
+  .mc-toast {
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    transform: translateX(-50%);
+    font-size: 1.8rem;
+    color: var(--mc-accent);
+    text-shadow: 2px 2px 0 var(--mc-shadow);
+    pointer-events: none;
+  }
+  .mc-held-name {
+    font-size: 1.4rem;
+    color: var(--mc-text);
+    text-shadow: 2px 2px 0 var(--mc-shadow);
+  }
+  .mc-hurt {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, var(--mc-hurt) 100%);
+  }
+  .mc-hotbar {
+    position: relative;
+    display: flex;
+    padding: 2px;
+    width: 364px;
+    height: 44px;
+  }
+  .mc-pack-sprite {
+    display: inline-block;
+    flex-shrink: 0;
+    image-rendering: pixelated;
+    background-repeat: no-repeat;
+    pointer-events: none;
+  }
+  .mc-hotbar-texture {
+    position: absolute;
+    inset: 0;
+  }
+  .mc-hotbar-selection {
+    position: absolute;
+    top: -2px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .mc-status-bar {
+    display: flex;
+    align-items: center;
+    width: auto;
+    height: 18px;
+  }
+  .mc-status-icon {
+    position: relative;
+    width: 16px;
+    height: 18px;
+    margin-right: -1px;
+  }
+  .mc-sprite-layer {
+    position: absolute;
+    inset: 0;
+  }
+  .mc-slot {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mc-slot);
+    box-shadow:
+      inset 2px 2px 0 var(--mc-slot-dark),
+      inset -2px -2px 0 var(--mc-panel-light);
+    cursor: pointer;
+  }
+  .mc-hotbar .mc-slot {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    box-shadow: none;
+  }
+  .mc-hotbar .mc-slot-active {
+    box-shadow: none;
+    z-index: 1;
+  }
+  .mc-count {
+    position: absolute;
+    right: 2px;
+    bottom: -2px;
+    font-size: 1.35rem;
+    color: var(--mc-text);
+    text-shadow: 2px 2px 0 var(--mc-shadow);
+    pointer-events: none;
+  }
+  .mc-panel {
+    padding: 1rem;
+    background: var(--mc-panel);
+    color: var(--mc-text-dark);
+    border: 3px solid var(--mc-slot-dark);
+    box-shadow:
+      inset 3px 3px 0 var(--mc-panel-light),
+      inset -3px -3px 0 var(--mc-panel-dark);
+    font-size: 1.2rem;
+  }
+  .mc-chat-line {
+    padding: 0.1rem 0.4rem;
+    font-size: 1.1rem;
+    color: var(--mc-text);
+    background: color-mix(in oklab, var(--mc-shadow) 55%, transparent);
+    text-shadow: 1px 1px 0 var(--mc-shadow);
+    width: fit-content;
+  }
+  .mc-chat-input {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    font-size: 1.2rem;
+    color: var(--mc-text);
+    background: color-mix(in oklab, var(--mc-shadow) 70%, transparent);
+    outline: none;
+    border: 0;
+  }
+  .mc-preview {
+    width: 220px;
+    height: 220px;
+    background: var(--mc-slot);
+    border: 3px solid var(--mc-slot-dark);
+    cursor: grab;
+  }
+  .mc-panel-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .mc-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 44px);
+    gap: 2px;
+  }
+  .mc-recipes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .mc-recipe {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2px 6px 2px 2px;
+    background: var(--mc-panel-light);
+    border: 2px solid var(--mc-panel-dark);
+    font-size: 1.1rem;
+    color: var(--mc-text-dark);
+  }
+  .mc-recipe:hover:not(:disabled) {
+    border-color: var(--mc-accent);
+  }
+  .mc-recipe-off {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .mc-gui {
+    position: relative;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    background-position: 0 0;
+  }
+  .mc-gui-slot {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .mc-gui-slot:hover {
+    background: color-mix(in oklab, var(--mc-text) 45%, transparent);
+  }
+  .mc-gui-icon {
+    display: flex;
+    transform: scale(1.4);
+    pointer-events: none;
+  }
+  .mc-gui-label {
+    position: absolute;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--mc-text-dark);
+    pointer-events: none;
+  }
+  .mc-gui-player {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .mc-item-img {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    pointer-events: none;
+  }
+
+  /* 3D isometric block icons */
+  .mc-cube-wrap {
+    width: 30px;
+    height: 30px;
+    perspective: none;
+    pointer-events: none;
+  }
+  .mc-cube {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    margin: 5px;
+    transform-style: preserve-3d;
+    transform: rotateX(-30deg) rotateY(45deg);
+  }
+  .mc-face {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-image: var(--atlas-url, url(/textures/atlas.png));
+    background-size: 800% 1600%;
+    image-rendering: pixelated;
+    backface-visibility: hidden;
+  }
+  .mc-top {
+    transform: rotateX(90deg) translateZ(10px);
+    filter: brightness(1);
+  }
+  .mc-front {
+    transform: translateZ(10px);
+    filter: brightness(0.85);
+  }
+  .mc-left {
+    transform: rotateY(-90deg) translateZ(10px);
+    filter: brightness(0.68);
+  }
+  .mc-right {
+    transform: rotateY(90deg) translateZ(10px);
+    filter: brightness(0.62);
+  }
+
+  /* hearts & hunger as pixel shapes */
+  .mc-heart,
+  .mc-food {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+  }
+  .mc-heart {
+    clip-path: polygon(0 25%, 25% 0, 50% 20%, 75% 0, 100% 25%, 100% 50%, 50% 100%, 0 50%);
+  }
+  .mc-food {
+    clip-path: polygon(30% 0, 100% 0, 100% 70%, 70% 100%, 0 100%, 0 30%);
+    border-radius: 2px;
+  }
+  .mc-heart.mc-full {
+    background: var(--mc-heart);
+  }
+  .mc-heart.mc-half {
+    background: linear-gradient(90deg, var(--mc-heart) 50%, var(--mc-empty) 50%);
+  }
+  .mc-food.mc-full {
+    background: var(--mc-food);
+  }
+  .mc-food.mc-half {
+    background: linear-gradient(90deg, var(--mc-empty) 50%, var(--mc-food) 50%);
+  }
+  .mc-empty {
+    background: var(--mc-empty);
+  }
+
+  /* Minecraft item durability bar */
+  .mc-durability-track {
+    position: absolute;
+    bottom: 3px;
+    left: 4px;
+    right: 4px;
+    height: 3px;
+    background: #000000;
+    pointer-events: none;
+    z-index: 5;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .mc-durability-fill {
+    height: 100%;
+    transition: width 0.12s ease-out;
+  }
+
+  /* Multiplayer Modal and Controls */
+  .mc-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    padding: 1rem;
+  }
+  .mc-modal-dialog {
+    background: var(--mc-panel);
+    border: 4px solid var(--mc-slot-dark);
+    box-shadow:
+      inset 3px 3px 0 var(--mc-panel-light),
+      inset -3px -3px 0 var(--mc-panel-dark),
+      0 12px 32px rgba(0, 0, 0, 0.85);
+    color: var(--mc-text-dark);
+    width: 100%;
+    max-width: 520px;
+    padding: 1.5rem;
+  }
+  .mc-input-field {
+    background: transparent;
+    color: #ffffff;
+    border: 3px solid transparent;
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/text_field.png") 3 fill / 3px stretch;
+    image-rendering: pixelated;
+    padding: 0.5rem 0.75rem;
+    font-size: 1.25rem;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+  }
+  .mc-input-field:focus {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/text_field_highlighted.png") 3 fill / 3px stretch;
+  }
+  .mc-badge-btn {
+    background: color-mix(in oklab, var(--mc-slot) 80%, black);
+    border: 2px solid var(--mc-slot-dark);
+    box-shadow:
+      inset 1px 1px 0 var(--mc-panel-light),
+      inset -1px -1px 0 var(--mc-panel-dark);
+    color: var(--mc-text);
+    font-family: inherit;
+    font-size: 1.15rem;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 var(--mc-shadow);
+  }
+  .mc-badge-btn:hover {
+    outline: 2px solid var(--mc-text);
+  }
+
+  /* Authentic Resource Pack Dirt Background Pattern */
+  .mc-dirt-bg {
+    background-color: #241910;
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/menu_background.png");
+    background-repeat: repeat;
+    background-size: 64px 64px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* In-world menu dark background */
+  .mc-inworld-bg {
+    background-color: #141414;
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/inworld_menu_background.png");
+    background-repeat: repeat;
+    background-size: 64px 64px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* Separator lines from resource pack */
+  .mc-header-sep {
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/header_separator.png");
+    background-repeat: repeat-x;
+    background-size: 64px 4px;
+    height: 4px;
+    width: 100%;
+    image-rendering: pixelated;
+  }
+
+  .mc-footer-sep {
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/footer_separator.png");
+    background-repeat: repeat-x;
+    background-size: 64px 4px;
+    height: 4px;
+    width: 100%;
+    image-rendering: pixelated;
+  }
+
+  .mc-inworld-header-sep {
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/inworld_header_separator.png");
+    background-repeat: repeat-x;
+    background-size: 64px 4px;
+    height: 4px;
+    width: 100%;
+    image-rendering: pixelated;
+  }
+
+  .mc-inworld-footer-sep {
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/inworld_footer_separator.png");
+    background-repeat: repeat-x;
+    background-size: 64px 4px;
+    height: 4px;
+    width: 100%;
+    image-rendering: pixelated;
+  }
+
+  /* Cross button from resource pack */
+  .mc-cross-btn {
+    width: 28px;
+    height: 28px;
+    background-color: transparent;
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/cross_button.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    image-rendering: pixelated;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    display: inline-block;
+  }
+  .mc-cross-btn:hover {
+    background-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/cross_button_highlighted.png");
+  }
+
+  /* Authentic widget tab from resource pack */
+  .mc-tab {
+    border: 4px solid transparent;
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/tab.png") 4 fill / 4px stretch;
+    image-rendering: pixelated;
+    color: #c0c0c0;
+    cursor: pointer;
+    background: transparent;
+    transition: transform 0.05s ease-out;
+  }
+  .mc-tab:hover {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/tab_highlighted.png") 4 fill / 4px stretch;
+    color: #ffffff;
+  }
+  .mc-tab-selected {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/tab_selected.png") 4 fill / 4px stretch;
+    color: #ffffa0;
+  }
+
+  /* Authentic resource pack sliders */
+  .mc-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 32px;
+    background: transparent;
+    border: 3px solid transparent;
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/slider.png") 3 fill / 3px stretch;
+    image-rendering: pixelated;
+    cursor: pointer;
+    outline: none;
+  }
+  .mc-slider:hover {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/slider_highlighted.png") 3 fill / 3px stretch;
+  }
+  .mc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 26px;
+    background-color: transparent;
+    border: 2px solid transparent;
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/slider_handle.png") 2 fill / 2px stretch;
+    image-rendering: pixelated;
+    cursor: pointer;
+  }
+  .mc-slider::-webkit-slider-thumb:hover {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/slider_handle_highlighted.png") 2 fill / 2px stretch;
+  }
+  .mc-slider::-moz-range-thumb {
+    width: 16px;
+    height: 26px;
+    background-color: transparent;
+    border: 2px solid transparent;
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/slider_handle.png") 2 fill / 2px stretch;
+    image-rendering: pixelated;
+    cursor: pointer;
+  }
+  .mc-slider::-moz-range-thumb:hover {
+    border-image: url("/resourcepack/assets/minecraft/textures/gui/sprites/widget/slider_handle_highlighted.png") 2 fill / 2px stretch;
+  }
+
+  /* Bedrock 3D Title */
+  .mc-bedrock-title {
+    color: #e0e0e0;
+    text-shadow:
+      0 1px 0 #cccccc,
+      0 2px 0 #b3b3b3,
+      0 3px 0 #999999,
+      0 4px 0 #808080,
+      0 5px 0 #666666,
+      0 6px 1px rgba(0, 0, 0, 0.4),
+      0 0 5px rgba(0, 0, 0, 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.5),
+      0 3px 5px rgba(0, 0, 0, 0.4),
+      0 5px 10px rgba(0, 0, 0, 0.45),
+      0 10px 20px rgba(0, 0, 0, 0.5),
+      4px 4px 0 #1f1f1f;
+    letter-spacing: 0.08em;
+  }
+
+  /* Oscillating Splash Text Animation */
+  .mc-splash-text {
+    transform-origin: center center;
+    animation: mcSplash 1.6s ease-in-out infinite alternate;
+  }
+
+  @keyframes mcSplash {
+    0% {
+      transform: scale(0.96) rotate(-18deg);
+    }
+    50% {
+      transform: scale(1.08) rotate(-22deg);
+    }
+    100% {
+      transform: scale(0.96) rotate(-18deg);
+    }
+  }
+}

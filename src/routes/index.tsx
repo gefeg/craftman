@@ -1,24 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Game } from "@/components/Game";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Blockbound Worlds — 3D Voxel Sandbox & Survival" },
+      {
+        name: "description",
+        content:
+          "Explora, pica, tala, construye y sobrevive a los mobs en un mundo de bloques 3D infinito.",
+      },
+      { property: "og:title", content: "Blockbound Worlds — 3D Voxel Sandbox & Survival" },
+      {
+        property: "og:description",
+        content: "3D voxel sandbox and survival game built with Three.js and React",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Game,
 });
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
