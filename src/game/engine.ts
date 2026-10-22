@@ -762,179 +762,173 @@ export class Engine {
     }
   }
 
-  connectMultiplayer(roomCode: string, name: string, asOwner = false): Promise<boolean> {
+  mpPassword = "";
+  mpPendingSave: { x: number; y: number; z: number; id: number }[] = [];
+  mpFlushTimer: ReturnType<typeof setInterval> | null = null;
+  mpHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+  flushMpBlocks() {
+    if (!this.multiplayerRoom || this.mpPendingSave.length === 0) return;
+    const changes = this.mpPendingSave.splice(0, 500);
+    saveBlocks({
+      data: {
+        address: this.multiplayerRoom,
+        password: this.mpPassword,
+        ownerToken: getOwnerToken(this.multiplayerRoom),
+        changes,
+      },
+    }).catch(() => {});
+  }
+
+  handleMpMessage(msg: any, resolve: (ok: boolean) => void, settledRef: { v: boolean }) {
+    if (msg.type === "joined") {
+      this.multiplayerRoom = msg.room;
+      this.multiplayerPlayerId = msg.id;
+      this.isServerOwner = !!msg.isOwner;
+      this.serverOwnerName = msg.ownerName || "";
+      this.state.multiplayer = { connected: true, room: msg.room, playerCount: this.remotePlayers.size + 1 };
+      this.toast(
+        this.isServerOwner
+          ? `Servidor público iniciado · ${msg.room}`
+          : `Conectado al servidor ${msg.room}`,
+      );
+      this.emit();
+      if (!settledRef.v) {
+        settledRef.v = true;
+        resolve(true);
+      }
+    } else if (msg.type === "kicked" || msg.type === "banned") {
+      this.disconnectReason =
+        msg.type === "banned"
+          ? "Has sido baneado permanentemente de este servidor."
+          : "Has sido expulsado del servidor por el dueño.";
+      this.toast(this.disconnectReason);
+      if (this.onChatMessage) this.onChatMessage(`§c${this.disconnectReason}`);
+      this.disconnectMultiplayer();
+      this.emit();
+    } else if (msg.type === "player_joined") {
+      const p = msg.player;
+      this.addRemotePlayer(p.id, p.name, p.pos, p.yaw, p.pitch, p.held, p.skin);
+      this.toast(`[+] ${p.name} se unió`);
+      if (this.onChatMessage) this.onChatMessage(`§e${p.name} se unió a la partida`);
+      if (this.state.multiplayer) {
+        this.state.multiplayer.playerCount = this.remotePlayers.size + 1;
+        this.emit();
+      }
+    } else if (msg.type === "player_update") {
+      const rp = this.remotePlayers.get(msg.id);
+      if (rp && Array.isArray(msg.pos)) {
+        const first = rp.targetPos.y < -50;
+        rp.targetPos.set(msg.pos[0], msg.pos[1], msg.pos[2]);
+        if (first) rp.pos.copy(rp.targetPos);
+        rp.targetYaw = msg.yaw;
+        rp.pitch = msg.pitch;
+        if (msg.swing && rp.model.arms[1]) {
+          rp.model.arms[1].rotation.x = (-Math.PI / 2) * msg.swing;
+        }
+        rp.heldId = msg.held;
+      }
+    } else if (msg.type === "block_change") {
+      if (msg.by !== this.multiplayerPlayerId) {
+        this.world.set(msg.x, msg.y, msg.z, msg.id);
+        const ch = this.world.getChunk(Math.floor(msg.x / CS), Math.floor(msg.z / CS));
+        if (ch) this.world.mesh(ch);
+      }
+    } else if (msg.type === "chat") {
+      if (this.onChatMessage) {
+        this.onChatMessage(msg.from === "Servidor" ? msg.text : `<${msg.from}> ${msg.text}`);
+      }
+    } else if (msg.type === "player_left") {
+      this.removeRemotePlayer(msg.id);
+      this.toast(`[-] ${msg.name} salió`);
+      if (this.onChatMessage) this.onChatMessage(`§e${msg.name} salió de la partida`);
+      if (this.state.multiplayer) {
+        this.state.multiplayer.playerCount = this.remotePlayers.size + 1;
+        this.emit();
+      }
+    }
+  }
+
+  /** Join a public server over the realtime network. Access key must be validated beforehand. */
+  connectMultiplayer(
+    roomCode: string,
+    name: string,
+    asOwner = false,
+    initialBlocks?: { x: number; y: number; z: number; id: number }[],
+  ): Promise<boolean> {
     return new Promise((resolve) => {
       this.disconnectMultiplayer();
-      const code = (roomCode || "MUNDO-1").toUpperCase().trim().slice(0, 64);
+      const code = normAddr(roomCode || "MUNDO-1");
       this.playerName = (name || "Steve").trim().slice(0, 16);
       this.disconnectReason = null;
       const isOwnerFlag = asOwner || this.isServerOwner;
-      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const url = `${proto}//${window.location.host}/ws/multiplayer`;
-
-      let settled = false;
-      let wsFailed = false;
-
-      const fallbackToHttp = async () => {
-        if (wsFailed) return;
-        wsFailed = true;
-        if (this.ws) {
-          try {
-            this.ws.onclose = null;
-            this.ws.onerror = null;
-            this.ws.close();
-          } catch {
-            // Ignore close errors
-          }
-          this.ws = null;
+      if (initialBlocks && initialBlocks.length) {
+        const touched = new Set<string>();
+        for (const bc of initialBlocks) {
+          this.world.set(bc.x, bc.y, bc.z, bc.id);
+          touched.add(`${Math.floor(bc.x / CS)},${Math.floor(bc.z / CS)}`);
         }
-        const ok = await this.connectHttpMultiplayer(code, this.playerName, isOwnerFlag);
-        if (!settled) {
-          settled = true;
-          resolve(ok);
+        for (const k of touched) {
+          const [cx, cz] = k.split(",").map(Number);
+          const ch = this.world.getChunk(cx, cz);
+          if (ch) this.world.mesh(ch);
+        }
+      }
+      const settledRef = { v: false };
+      const id = crypto.randomUUID().slice(0, 12);
+      const sock = new RealtimeSocket(
+        code,
+        id,
+        this.playerName,
+        getStoredCustomSkin(),
+        isOwnerFlag,
+        isOwnerFlag ? this.playerName : this.serverOwnerName,
+        () => ({
+          pos: [this.player.pos.x, this.player.pos.y, this.player.pos.z],
+          yaw: this.yaw,
+          pitch: this.pitch,
+          held: this.held(),
+        }),
+      );
+      this.ws = sock as unknown as WebSocket;
+      sock.onmessage = (ev) => {
+        try {
+          this.handleMpMessage(JSON.parse(ev.data), resolve, settledRef);
+        } catch (err) {
+          console.error("Multiplayer msg err:", err);
         }
       };
-
-      try {
-        const ws = new WebSocket(url);
-        this.ws = ws;
-
-        const timer = setTimeout(() => {
-          if (!this.multiplayerPlayerId) {
-            fallbackToHttp();
-          }
-        }, 1200);
-
-        ws.onopen = () => {
-          ws.send(
-            JSON.stringify({
-              type: "join",
-              room: code,
-              name: this.playerName,
-              isOwner: isOwnerFlag,
-              pos: [this.player.pos.x, this.player.pos.y, this.player.pos.z],
-              yaw: this.yaw,
-              pitch: this.pitch,
+      sock.onerror = () => {
+        if (!settledRef.v) {
+          settledRef.v = true;
+          this.toast("No se pudo conectar al servidor");
+          resolve(false);
+        }
+      };
+      this.mpFlushTimer = setInterval(() => this.flushMpBlocks(), 2000);
+      if (isOwnerFlag && this.serverConfig) {
+        const cfg = this.serverConfig;
+        const beat = () =>
+          registerServer({
+            data: {
+              address: code,
+              name: cfg.serverName,
+              motd: cfg.motd || "",
+              icon: cfg.icon,
               seed: this.seed,
-            }),
-          );
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === "joined") {
-              clearTimeout(timer);
-              this.multiplayerRoom = msg.room;
-              this.multiplayerPlayerId = msg.id;
-              this.isServerOwner = !!msg.isOwner;
-              this.serverOwnerName = msg.ownerName || "";
-              this.state.multiplayer = {
-                connected: true,
-                room: msg.room,
-                playerCount: (msg.players?.length || 0) + 1,
-              };
-              if (Array.isArray(msg.blockChanges)) {
-                for (const bc of msg.blockChanges) {
-                  this.world.set(bc.x, bc.y, bc.z, bc.id);
-                }
-                for (const ch of this.world.chunks.values()) {
-                  this.world.mesh(ch);
-                }
-              }
-              if (Array.isArray(msg.players)) {
-                for (const p of msg.players) {
-                  this.addRemotePlayer(p.id, p.name, p.pos, p.yaw, p.pitch, p.held);
-                }
-              }
-              this.toast(
-                this.isServerOwner
-                  ? `Servidor iniciado (Eres el dueño) · ${msg.room}`
-                  : `Conectado al servidor ${msg.room}`,
-              );
-              this.emit();
-              if (!settled) {
-                settled = true;
-                resolve(true);
-              }
-            } else if (msg.type === "kicked") {
-              this.disconnectReason =
-                msg.message || "Has sido expulsado del servidor por el dueño.";
-              this.toast(this.disconnectReason);
-              if (this.onChatMessage) this.onChatMessage(`§c${this.disconnectReason}`);
-              this.disconnectMultiplayer();
-              this.emit();
-            } else if (msg.type === "banned") {
-              this.disconnectReason =
-                msg.message || "Has sido baneado permanentemente de este servidor.";
-              this.toast(this.disconnectReason);
-              if (this.onChatMessage) this.onChatMessage(`§c${this.disconnectReason}`);
-              this.disconnectMultiplayer();
-              this.emit();
-              if (!settled) {
-                settled = true;
-                resolve(false);
-              }
-            } else if (msg.type === "player_joined") {
-              const p = msg.player;
-              this.addRemotePlayer(p.id, p.name, p.pos, p.yaw, p.pitch, p.held);
-              this.toast(`[+] ${p.name} se unió`);
-              if (this.state.multiplayer) {
-                this.state.multiplayer.playerCount = this.remotePlayers.size + 1;
-                this.emit();
-              }
-            } else if (msg.type === "player_update") {
-              const rp = this.remotePlayers.get(msg.id);
-              if (rp) {
-                rp.targetPos.set(msg.pos[0], msg.pos[1], msg.pos[2]);
-                rp.targetYaw = msg.yaw;
-                rp.pitch = msg.pitch;
-                if (msg.swing && rp.model.arms[1]) {
-                  rp.model.arms[1].rotation.x = (-Math.PI / 2) * msg.swing;
-                }
-                rp.heldId = msg.held;
-              }
-            } else if (msg.type === "block_change") {
-              if (msg.by !== this.multiplayerPlayerId) {
-                this.world.set(msg.x, msg.y, msg.z, msg.id);
-                const ch = this.world.getChunk(Math.floor(msg.x / CS), Math.floor(msg.z / CS));
-                if (ch) this.world.mesh(ch);
-              }
-            } else if (msg.type === "chat") {
-              if (this.onChatMessage) {
-                this.onChatMessage(
-                  msg.from === "Servidor" ? msg.text : `<${msg.from}> ${msg.text}`,
-                );
-              }
-            } else if (msg.type === "player_left") {
-              this.removeRemotePlayer(msg.id);
-              this.toast(`[-] ${msg.name} salió`);
-              if (this.state.multiplayer) {
-                this.state.multiplayer.playerCount = this.remotePlayers.size + 1;
-                this.emit();
-              }
-            }
-          } catch (err) {
-            console.error("Multiplayer msg err:", err);
-          }
-        };
-
-        ws.onerror = () => {
-          clearTimeout(timer);
-          fallbackToHttp();
-        };
-
-        ws.onclose = () => {
-          if (!this.multiplayerPlayerId) {
-            clearTimeout(timer);
-            fallbackToHttp();
-          } else {
-            this.disconnectMultiplayer();
-          }
-        };
-      } catch {
-        fallbackToHttp();
+              ownerName: this.playerName,
+              ownerToken: getOwnerToken(code, true),
+            },
+          }).catch(() => {});
+        beat();
+        this.mpHeartbeatTimer = setInterval(beat, 60000);
       }
+      setTimeout(() => {
+        if (!settledRef.v) {
+          settledRef.v = true;
+          resolve(false);
+        }
+      }, 10000);
     });
   }
 
@@ -2216,7 +2210,7 @@ export class Engine {
 
     // sync local state over websocket at 20Hz
     const nowTs = performance.now();
-    if (this.ws && this.ws.readyState === WebSocket.OPEN && nowTs - this.lastMultiplayerSync > 50) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && nowTs - this.lastMultiplayerSync > 100) {
       this.lastMultiplayerSync = nowTs;
       this.ws.send(
         JSON.stringify({
