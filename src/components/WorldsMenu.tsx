@@ -18,6 +18,46 @@ import {
 } from "@/game/worldsDb";
 import { sfx } from "@/game/audio";
 import { getStoredPlayerName } from "@/game/skinStorage";
+import {
+  getOwnerToken,
+  getSavedPassword,
+  savePassword,
+  listPublicServers,
+  isOnline,
+  fileToServerIcon,
+  isImageIcon,
+  normAddr,
+  type PublicServer,
+} from "@/game/mpClient";
+import { registerServer, unregisterServer, joinServer } from "@/lib/mpServers.functions";
+
+export interface JoinInfo {
+  seed: number;
+  name: string;
+  icon: string;
+  password: string;
+  ownerName: string;
+  isOwner: boolean;
+  blocks: { x: number; y: number; z: number; id: number }[];
+}
+
+export function serverAddress(cfg: { ip: string; port: number }): string {
+  return normAddr(cfg.port ? `${cfg.ip}:${cfg.port}` : cfg.ip);
+}
+
+export function ServerIcon({ icon, className = "" }: { icon?: string; className?: string }) {
+  if (isImageIcon(icon)) {
+    return (
+      <img
+        src={icon}
+        alt="Icono del servidor"
+        className={`object-cover ${className}`}
+        style={{ imageRendering: "pixelated" }}
+      />
+    );
+  }
+  return <span className={`flex items-center justify-center ${className}`}>{getServerIconEmoji(icon)}</span>;
+}
 
 export const SERVER_ICONS = [
   { id: "diamond", emoji: "💎", label: "Diamante" },
@@ -39,7 +79,7 @@ export function getServerIconEmoji(iconId?: string): string {
 
 interface WorldsMenuProps {
   onSelectWorld: (world: WorldRecord) => void;
-  onJoinServer?: (roomCode: string, name: string) => void;
+  onJoinServer?: (roomCode: string, name: string, info?: JoinInfo) => void;
   onBack: () => void;
 }
 
@@ -64,6 +104,19 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
   const [srvIp, setSrvIp] = useState("127.0.0.1");
   const [srvPort, setSrvPort] = useState("19132");
   const [srvIcon, setSrvIcon] = useState("diamond");
+  const [srvPassword, setSrvPassword] = useState("");
+  const [srvMotd, setSrvMotd] = useState("");
+  const [srvError, setSrvError] = useState<string | null>(null);
+  const [srvSaving, setSrvSaving] = useState(false);
+  const iconFileRef = useRef<HTMLInputElement>(null);
+  const joinIconFileRef = useRef<HTMLInputElement>(null);
+
+  // Public servers
+  const [publicServers, setPublicServers] = useState<PublicServer[]>([]);
+  const [pwPrompt, setPwPrompt] = useState<{ address: string; name: string } | null>(null);
+  const [pwValue, setPwValue] = useState("");
+  const [joinBusy, setJoinBusy] = useState(false);
+  const [joinPassword, setJoinPassword] = useState("");
 
   // Join external server modal state (ONLY IP and Port)
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -71,6 +124,67 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
   const [joinPort, setJoinPort] = useState("19132");
   const [joinIcon, setJoinIcon] = useState("grass");
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  const refreshPublic = async () => {
+    try {
+      setPublicServers(await listPublicServers());
+    } catch {
+      /* offline */
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== "servers") return;
+    refreshPublic();
+    const iv = setInterval(refreshPublic, 15000);
+    return () => clearInterval(iv);
+  }, [activeTab]);
+
+  /** Validate access key on the server then enter the world. Returns an error message or null. */
+  const attemptJoin = async (address: string, password: string): Promise<string | null> => {
+    const addr = normAddr(address);
+    setJoinBusy(true);
+    try {
+      const res = await joinServer({
+        data: {
+          address: addr,
+          password,
+          ownerToken: getOwnerToken(addr),
+          playerName: getStoredPlayerName(),
+        },
+      });
+      if (!res.ok) return res.error;
+      savePassword(addr, password);
+      onJoinServer?.(addr, getStoredPlayerName(), {
+        seed: res.seed,
+        name: res.name,
+        icon: res.icon,
+        password,
+        ownerName: res.ownerName,
+        isOwner: res.isOwner,
+        blocks: res.blocks,
+      });
+      return null;
+    } catch {
+      return "No se pudo conectar. Revisa tu conexión.";
+    } finally {
+      setJoinBusy(false);
+    }
+  };
+
+  const handleUploadIcon = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    set: (v: string) => void,
+  ) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      set(await fileToServerIcon(f));
+    } catch {
+      setSrvError("No se pudo leer la imagen");
+    }
+  };
 
   const importFileRef = useRef<HTMLInputElement>(null);
 
@@ -100,6 +214,11 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
   const handleDelete = async (id: string) => {
     sfx.click();
+    const w = worlds.find((x) => x.id === id);
+    if (w?.isServer && w.serverConfig) {
+      const addr = serverAddress(w.serverConfig);
+      unregisterServer({ data: { address: addr, ownerToken: getOwnerToken(addr) } }).catch(() => {});
+    }
     await deleteWorld(id);
     setDeleteTarget(null);
     await loadData();
@@ -112,6 +231,9 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
     setSrvIp(world.serverConfig?.ip || "127.0.0.1");
     setSrvPort(String(world.serverConfig?.port || 19132));
     setSrvIcon(world.serverConfig?.icon || "diamond");
+    setSrvMotd(world.serverConfig?.motd || "");
+    setSrvPassword(world.serverConfig ? getSavedPassword(serverAddress(world.serverConfig)) : "");
+    setSrvError(null);
   };
 
   const handleSaveWorldAsServer = async () => {
@@ -126,11 +248,47 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
       port: cleanPort,
       icon: srvIcon,
       serverName: cleanName,
+      motd: srvMotd.trim(),
       isOwner: true,
       ownerName: getStoredPlayerName(),
     };
+    const addr = serverAddress(config);
+    setSrvSaving(true);
+    setSrvError(null);
+    try {
+      const res = await registerServer({
+        data: {
+          address: addr,
+          name: cleanName,
+          motd: config.motd,
+          icon: srvIcon,
+          seed: serverModalTarget.seed,
+          ownerName: getStoredPlayerName(),
+          ownerToken: getOwnerToken(addr, true),
+          password: srvPassword,
+        },
+      });
+      if (!res.ok) {
+        setSrvError(res.error || "No se pudo publicar el servidor");
+        return;
+      }
+      // address changed: remove the old public entry
+      const prev = serverModalTarget.serverConfig;
+      if (prev && serverAddress(prev) !== addr && getOwnerToken(serverAddress(prev))) {
+        unregisterServer({
+          data: { address: serverAddress(prev), ownerToken: getOwnerToken(serverAddress(prev)) },
+        }).catch(() => {});
+      }
+      savePassword(addr, srvPassword);
+    } catch {
+      setSrvError("No se pudo conectar. Revisa tu conexión.");
+      return;
+    } finally {
+      setSrvSaving(false);
+    }
 
     await convertWorldToServer(serverModalTarget.id, config);
+    refreshPublic();
     setServerModalTarget(null);
     await loadData();
     setActiveTab("servers");
@@ -138,11 +296,15 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
   const handleRevertServer = async (world: WorldRecord) => {
     sfx.click();
+    if (world.serverConfig) {
+      const addr = serverAddress(world.serverConfig);
+      unregisterServer({ data: { address: addr, ownerToken: getOwnerToken(addr) } }).catch(() => {});
+    }
     await revertServerToWorld(world.id);
     await loadData();
   };
 
-  const handleJoinExternalSubmit = () => {
+  const handleJoinExternalSubmit = async () => {
     const cleanIp = joinIp.trim();
     const cleanPort = parseInt(joinPort.trim(), 10);
     if (!cleanIp) {
@@ -156,6 +318,11 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
 
     sfx.click();
     setJoinError(null);
+    const err = await attemptJoin(`${cleanIp}:${cleanPort}`, joinPassword);
+    if (err) {
+      setJoinError(err);
+      return;
+    }
     saveExternalServer({
       ip: cleanIp,
       port: cleanPort,
@@ -163,20 +330,22 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
       name: `Servidor ${cleanIp}:${cleanPort}`,
     });
 
-    const roomAddress = `${cleanIp}:${cleanPort}`;
-    const playerName = getStoredPlayerName();
     setShowJoinModal(false);
-    if (onJoinServer) {
-      onJoinServer(roomAddress, playerName);
-    }
   };
 
-  const handleConnectDirectly = (ip: string, port: number) => {
+  const handleConnectDirectly = async (ip: string, port: number) => {
     sfx.click();
-    const roomAddress = `${ip}:${port}`;
-    const playerName = getStoredPlayerName();
-    if (onJoinServer) {
-      onJoinServer(roomAddress, playerName);
+    await handlePublicJoin(normAddr(port ? `${ip}:${port}` : ip), `${ip}:${port}`);
+  };
+
+  const handlePublicJoin = async (address: string, name: string) => {
+    const saved = getSavedPassword(address);
+    const err = await attemptJoin(address, saved);
+    if (err && /clave/i.test(err)) {
+      setPwValue("");
+      setPwPrompt({ address, name });
+    } else if (err) {
+      alert(err);
     }
   };
 
@@ -496,7 +665,6 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                 <div className="grid grid-cols-1 gap-3">
                   {serverWorlds.map((w) => {
                     const cfg = w.serverConfig;
-                    const iconEmoji = getServerIconEmoji(cfg?.icon);
                     return (
                       <div
                         key={w.id}
@@ -504,8 +672,8 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                       >
                         {/* Left: Icon & Info */}
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-20 h-20 bg-[#161a1f] border-2 border-cyan-700/60 flex items-center justify-center text-4xl shadow-inner flex-shrink-0">
-                            {iconEmoji}
+                          <div className="w-20 h-20 bg-[#161a1f] border-2 border-cyan-700/60 flex items-center justify-center text-4xl shadow-inner flex-shrink-0 overflow-hidden">
+                            <ServerIcon icon={cfg?.icon} className="w-full h-full" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
@@ -521,8 +689,11 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                                 {cfg?.ip || "127.0.0.1"}:{cfg?.port || 19132}
                               </span>
                               <span className="text-emerald-400 font-bold">
-                                ● Listo para hospedar
+                                ● Público
                               </span>
+                              {cfg && getSavedPassword(serverAddress(cfg)) && (
+                                <span className="text-amber-300 font-bold">🔒 Con clave</span>
+                              )}
                               <span className="text-neutral-400 text-sm">
                                 · {formatDate(w.lastPlayed)}
                               </span>
@@ -598,7 +769,7 @@ export function WorldsMenu({ onSelectWorld, onJoinServer, onBack }: WorldsMenuPr
                     >
                       <div className="flex items-center gap-4 flex-1">
                         <div className="w-16 h-16 bg-[#181818] border-2 border-black/40 flex items-center justify-center text-3xl flex-shrink-0">
-                          {getServerIconEmoji(srv.icon)}
+                          <ServerIcon icon={srv.icon} className="w-full h-full" />
                         </div>
                         <div>
                           <h4 className="text-2xl font-bold text-white tracking-wide">
