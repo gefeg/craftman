@@ -165,6 +165,17 @@ export const sfx = {
   swing() {
     play("swing.weak", 0.4);
   },
+  /** Real Minecraft attack sounds (entity.player.attack.*). */
+  attack(kind: "weak" | "strong" | "crit" | "sweep") {
+    const key = kind === "sweep" ? "swing.sweep" : kind === "weak" ? "swing.weak" : "swing.strong";
+    if (!play(key, kind === "crit" ? 1 : 0.7, kind === "crit" ? 1.15 : 1)) noise(0.1, 900, 0.5);
+  },
+  mobDeath(type: string) {
+    if (!play("death." + type, 0.9)) play("hurt." + type, 0.9, 0.8);
+  },
+  fall(big: boolean) {
+    play(big ? "fall.big" : "fall.small", 0.8);
+  },
   mob(type: string) {
     play("mob." + type, 0.7);
   },
