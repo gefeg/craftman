@@ -173,7 +173,6 @@ export function Game() {
     };
     saveRef.current = saveNow;
     warmWorldsDb();
-    if (import.meta.env.DEV) (window as unknown as { __engine?: Engine }).__engine = e;
     const onHide = () => {
       if (document.visibilityState === "hidden") void saveNow();
     };
