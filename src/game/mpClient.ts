@@ -201,6 +201,28 @@ export class RealtimeSocket {
       case "ban":
         if (this.isOwner) this.raw({ type: "kick_target", target: msg.target, ban: msg.type === "ban" });
         break;
+      case "pvp_hit":
+        this.raw({
+          type: "pvp_hit",
+          by: this.id,
+          byName: this.name,
+          target: String(msg.target),
+          dmg: Number(msg.dmg) || 0,
+          dir: Array.isArray(msg.dir) ? msg.dir.slice(0, 2) : [0, 0],
+          kb: Number(msg.kb) || 1,
+          crit: !!msg.crit,
+        });
+        break;
+      case "hurt":
+        this.raw({ type: "player_hurt", id: this.id });
+        break;
+      case "death":
+        this.raw({ type: "player_death", id: this.id, text: String(msg.text || "").slice(0, 80) });
+        this.deliver({ type: "chat", from: "Servidor", text: `§c${String(msg.text || "")}` });
+        break;
+      case "respawn":
+        this.raw({ type: "player_respawn", id: this.id });
+        break;
     }
   }
 
