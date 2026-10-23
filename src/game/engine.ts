@@ -20,6 +20,7 @@ import { getSettings, type GameSettings } from "./settings";
 import { getStoredCustomSkin, getStoredPlayerName } from "./skinStorage";
 import type { WorldRecord, ServerConfig } from "./worldsDb";
 import { RealtimeSocket, getOwnerToken, normAddr } from "./mpClient";
+import { acceptPvpHit, meleeDamage, PVP_INVULN_SECONDS } from "./pvp";
 import { registerServer, saveBlocks, setBan } from "@/lib/mpServers.functions";
 
 const FA = faithful as { width: number; height: number; rects: Record<string, number[]> };
@@ -246,8 +247,14 @@ export class Engine {
       pitch: number;
       walk: number;
       heldId: string | null;
+      hurt: number;
+      dead: boolean;
+      lastRed: number;
     }
   >();
+  pvpInvuln = 0;
+  lastPvpAttacker = "";
+  lastPvpAt = 0;
   lastMultiplayerSync = 0;
   onChatMessage?: (msg: string) => void;
   httpSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -790,6 +797,9 @@ export class Engine {
       pitch,
       walk: 0,
       heldId: held,
+      hurt: 0,
+      dead: false,
+      lastRed: 0,
     });
   }
 
@@ -860,13 +870,32 @@ export class Engine {
       if (rp && Array.isArray(msg.pos)) {
         const first = rp.targetPos.y < -50;
         rp.targetPos.set(msg.pos[0], msg.pos[1], msg.pos[2]);
-        if (first) rp.pos.copy(rp.targetPos);
+        if (first || rp.pos.distanceTo(rp.targetPos) > 20) rp.pos.copy(rp.targetPos);
         rp.targetYaw = msg.yaw;
         rp.pitch = msg.pitch;
         if (msg.swing && rp.model.arms[1]) {
           rp.model.arms[1].rotation.x = (-Math.PI / 2) * msg.swing;
         }
         rp.heldId = msg.held;
+        if (typeof msg.hp === "number") rp.dead = msg.hp <= 0;
+      }
+    } else if (msg.type === "pvp_hit") {
+      if (msg.target === this.multiplayerPlayerId) this.receivePvpHit(msg);
+    } else if (msg.type === "player_hurt") {
+      const rp = this.remotePlayers.get(msg.id);
+      if (rp) {
+        rp.hurt = 0.5;
+        if (rp.pos.distanceTo(this.player.pos) < 16) sfx.hurt();
+      }
+    } else if (msg.type === "player_death") {
+      const rp = this.remotePlayers.get(msg.id);
+      if (rp) rp.dead = true;
+      if (this.onChatMessage && msg.text) this.onChatMessage(`§c${String(msg.text).slice(0, 80)}`);
+    } else if (msg.type === "player_respawn") {
+      const rp = this.remotePlayers.get(msg.id);
+      if (rp) {
+        rp.dead = false;
+        rp.hurt = 0;
       }
     } else if (msg.type === "block_change") {
       if (msg.by !== this.multiplayerPlayerId) {
@@ -1710,24 +1739,31 @@ export class Engine {
   }
 
   // ---------- actions ----------
-  /** Minecraft-style attack: cooldown charge scales damage, falling = critical, sprint = extra knockback, sword sweep. */
+  /** Minecraft-style attack: cooldown charge scales damage, falling = critical, sprint = extra knockback, sword sweep. Works on mobs and other players. */
   attack() {
     const hitM = this.rayMob();
+    const hitP = this.rayRemote();
     const hitB = this.raycast();
     const it = ITEMS[this.held() ?? ""];
     const tool = it?.tool;
     const fullCd = tool === "sword" ? 0.625 : tool === "axe" ? 1 : tool ? 0.85 : 0.25;
     const charge = Math.max(0, Math.min(1, 1 - Math.max(0, this.attackCd) / fullCd));
     this.handSwing = 1;
-    if (hitM && (!hitB || hitM.t < hitB.t)) {
+    const mobT = hitM && (!hitB || hitM.t < hitB.t) ? hitM.t : Infinity;
+    const plT = hitP && (!hitB || hitP.t < hitB.t) ? hitP.t : Infinity;
+    if (mobT < Infinity || plT < Infinity) {
       const base = it?.damage ?? 1;
-      let dmg = base * (0.2 + charge * charge * 0.8);
       const p = this.player;
       const crit = charge > 0.9 && !p.onGround && p.vel.y < 0 && !p.inWater;
       const sprinting = this.keys.has("ControlLeft") && charge > 0.9;
-      if (crit) dmg *= 1.5;
+      const dmg = meleeDamage(base, charge, crit);
       const dir = this.look();
-      const landed = this.damageMob(hitM.mob, dmg, dir, sprinting ? 1.6 : charge > 0.9 ? 1 : 0.5);
+      const kb = sprinting ? 1.6 : charge > 0.9 ? 1 : 0.5;
+      const center = plT < mobT ? hitP!.rp.pos : hitM!.mob.pos;
+      const landed =
+        plT < mobT
+          ? this.hitRemotePlayer(hitP!.rp, dmg, dir, kb, crit)
+          : this.damageMob(hitM!.mob, dmg, dir, kb);
       if (landed) {
         if (crit) sfx.attack("crit");
         else if (charge > 0.9) sfx.attack("strong");
@@ -1736,8 +1772,12 @@ export class Engine {
         if (tool === "sword" && charge > 0.9 && p.onGround && !sprinting) {
           sfx.attack("sweep");
           for (const o of [...this.mobs]) {
-            if (o === hitM.mob) continue;
-            if (o.pos.distanceTo(hitM.mob.pos) < 1.6) this.damageMob(o, 1, dir, 0.6);
+            if (o === hitM?.mob && mobT <= plT) continue;
+            if (o.pos.distanceTo(center) < 1.6) this.damageMob(o, 1, dir, 0.6);
+          }
+          for (const o of this.remotePlayers.values()) {
+            if (o === hitP?.rp && plT < mobT) continue;
+            if (!o.dead && o.pos.distanceTo(center) < 1.6) this.hitRemotePlayer(o, 1, dir, 0.6, false);
           }
         }
       }
@@ -1746,6 +1786,68 @@ export class Engine {
       sfx.swing();
     }
     this.attackCd = fullCd;
+  }
+
+  /** Ray test against other players' bodies (feet position, 0.6 x 1.8 box like Minecraft). */
+  rayRemote(max = 3.5) {
+    if (!this.remotePlayers.size) return null;
+    const o = this.eye(),
+      d = this.look();
+    let best: any = null,
+      bt = max;
+    const oo = [o.x, o.y, o.z],
+      dd = [d.x, d.y, d.z];
+    for (const rp of this.remotePlayers.values()) {
+      if (rp.dead || rp.targetPos.y < -50) continue;
+      const min = [rp.pos.x - 0.35, rp.pos.y, rp.pos.z - 0.35],
+        mx = [rp.pos.x + 0.35, rp.pos.y + 1.85, rp.pos.z + 0.35];
+      let t0 = 0,
+        t1 = bt,
+        ok = true;
+      for (let a = 0; a < 3; a++) {
+        const inv = 1 / dd[a];
+        let ta = (min[a] - oo[a]) * inv,
+          tb = (mx[a] - oo[a]) * inv;
+        if (ta > tb) [ta, tb] = [tb, ta];
+        t0 = Math.max(t0, ta);
+        t1 = Math.min(t1, tb);
+        if (t0 > t1) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok && t0 < bt) {
+        bt = t0;
+        best = rp;
+      }
+    }
+    return best ? { rp: best, t: bt } : null;
+  }
+
+  /** Send a melee hit to another player; the victim applies damage and knockback on their side. */
+  hitRemotePlayer(rp: any, dmg: number, dir: THREE.Vector3, kb: number, crit: boolean): boolean {
+    if (!this.ws || rp.dead || rp.hurt > 0.2) return false;
+    rp.hurt = 0.5;
+    const h = Math.hypot(dir.x, dir.z) || 1;
+    this.mpSend({
+      type: "pvp_hit",
+      target: rp.id,
+      dmg: Math.round(dmg * 100) / 100,
+      dir: [dir.x / h, dir.z / h],
+      kb,
+      crit,
+    });
+    return true;
+  }
+
+  mpSend(msg: Record<string, unknown>) {
+    if (this.ws && this.ws.readyState === 1) {
+      try {
+        this.ws.send(JSON.stringify(msg));
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   damageMob(m: Mob, dmg: number, dir: THREE.Vector3, kb = 1): boolean {
@@ -1974,12 +2076,47 @@ export class Engine {
       this.player.vel.z += d.z * 8;
       this.player.vel.y = 5;
     }
+    this.mpSend({ type: "hurt" });
+    if (this.state.hp <= 0) this.die();
+    this.emit();
+  }
+
+  /** Incoming melee hit from another player (validated on our side like a Minecraft server would). */
+  receivePvpHit(msg: any) {
+    if (this.state.dead || this.state.mode === "creative") return;
+    const attacker = this.remotePlayers.get(msg.by);
+    const dist = attacker ? attacker.targetPos.distanceTo(this.player.pos) : Infinity;
+    const dmg = acceptPvpHit(Number(msg.dmg), dist, this.pvpInvuln);
+    if (!dmg) return;
+    this.pvpInvuln = PVP_INVULN_SECONDS;
+    this.lastPvpAttacker = String(msg.byName || attacker?.name || "otro jugador").slice(0, 16);
+    this.lastPvpAt = performance.now();
+    this.state.hp = Math.max(0, this.state.hp - dmg);
+    sfx.hurt();
+    this.state.hurt = 1;
+    this.camShake = Math.max(this.camShake, msg.crit ? 0.35 : 0.2);
+    const kb = Math.max(0, Math.min(1.6, Number(msg.kb) || 1));
+    let dx = Number(msg.dir?.[0]) || 0,
+      dz = Number(msg.dir?.[1]) || 0;
+    const len = Math.hypot(dx, dz) || 1;
+    dx /= len;
+    dz /= len;
+    this.player.vel.x += dx * 6 * kb;
+    this.player.vel.z += dz * 6 * kb;
+    this.player.vel.y = 4 + kb * 0.8;
+    this.mpSend({ type: "hurt" });
     if (this.state.hp <= 0) this.die();
     this.emit();
   }
 
   die() {
     this.state.dead = true;
+    const recentPvp = this.lastPvpAttacker && performance.now() - this.lastPvpAt < 8000;
+    const text = recentPvp
+      ? `${this.playerName} fue asesinado por ${this.lastPvpAttacker}`
+      : `${this.playerName} murió`;
+    this.lastPvpAttacker = "";
+    this.mpSend({ type: "death", text });
     for (const s of this.state.slots)
       if (s)
         this.spawnDrop(
@@ -1999,6 +2136,8 @@ export class Engine {
     this.player.pos.copy(this.spawn);
     this.player.vel.set(0, 0, 0);
     this.fallStart = this.spawn.y;
+    this.pvpInvuln = 0;
+    this.mpSend({ type: "respawn" });
     this.emit();
     this.requestLock();
   }
@@ -2265,8 +2404,17 @@ export class Engine {
       }
     }
 
+    if (this.pvpInvuln > 0) this.pvpInvuln -= dt;
     // update remote players
     for (const rp of this.remotePlayers.values()) {
+      rp.model.root.visible = !rp.dead;
+      if (rp.hurt > 0) rp.hurt -= dt;
+      const red = rp.hurt > 0 ? 0.7 : 0;
+      if (rp.lastRed !== red) {
+        rp.lastRed = red;
+        for (const mat of rp.model.mats) mat.emissive?.setRGB(red, 0, 0);
+      }
+      rp.model.root.rotation.z = rp.hurt > 0 ? Math.sin(rp.hurt * 20) * 0.1 : 0;
       const prevPos = rp.pos.clone();
       rp.pos.lerp(rp.targetPos, 1 - Math.exp(-14 * dt));
       rp.model.root.position.copy(rp.pos);
@@ -2317,7 +2465,9 @@ export class Engine {
       this.outline.visible = true;
       this.outline.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
       const key = `${hit.x},${hit.y},${hit.z}`;
-      if (this.mouseL && !(this.rayMob() && this.rayMob()!.t < hit.t)) {
+      const rm = this.rayMob();
+      const rr = this.rayRemote();
+      if (this.mouseL && !(rm && rm.t < hit.t) && !(rr && rr.t < hit.t)) {
         if (key !== this.breakTarget) {
           this.breakTarget = key;
           this.breakProgress = 0;
@@ -2373,8 +2523,9 @@ export class Engine {
         this.emit();
       }
     }
-    // Holding click keeps hitting mobs, but only once the attack cooldown has fully recharged
-    if (this.mouseL && playing && this.attackCd <= 0 && this.rayMob()) this.attack();
+    // Holding click keeps hitting mobs/players, but only once the attack cooldown has fully recharged
+    if (this.mouseL && playing && this.attackCd <= 0 && (this.rayMob() || this.rayRemote()))
+      this.attack();
 
     // hand
     this.updateHand(dt);
