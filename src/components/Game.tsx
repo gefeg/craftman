@@ -505,9 +505,6 @@ export function Game() {
                   {engine.deathText}
                 </p>
               )}
-              <p className="text-xl opacity-90 drop-shadow-[2px_2px_0_#000000]">
-                Puntuación: <span className="text-yellow-300">0</span>
-              </p>
               <div className="flex flex-col gap-2.5 mt-4">
                 <Button
                   variant="ghost"
