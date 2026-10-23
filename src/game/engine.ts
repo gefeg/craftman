@@ -890,7 +890,7 @@ export class Engine {
     } else if (msg.type === "player_death") {
       const rp = this.remotePlayers.get(msg.id);
       if (rp) rp.dead = true;
-      if (this.onChatMessage && msg.text) this.onChatMessage(String(msg.text).slice(0, 80));
+      if (this.onChatMessage && msg.text) this.onChatMessage(`§c${String(msg.text).slice(0, 80)}`);
     } else if (msg.type === "player_respawn") {
       const rp = this.remotePlayers.get(msg.id);
       if (rp) {
