@@ -9,7 +9,7 @@ import { Button } from "./ui/button";
 import { MainMenu } from "./MainMenu";
 import { LoadingScreen } from "./LoadingScreen";
 import { SettingsMenu } from "./SettingsMenu";
-import { saveWorld, createNewWorldRecord, type WorldRecord } from "@/game/worldsDb";
+import { saveWorld, createNewWorldRecord, warmWorldsDb, type WorldRecord } from "@/game/worldsDb";
 import { startMusic, stopAudio, sfx } from "@/game/audio";
 import { getStoredPlayerName } from "@/game/skinStorage";
 import { SERVER_ICONS, getServerIconEmoji, ServerIcon, serverAddress, type JoinInfo } from "./WorldsMenu";
@@ -172,6 +172,7 @@ export function Game() {
       await saveWorld(record);
     };
     saveRef.current = saveNow;
+    warmWorldsDb();
     if (import.meta.env.DEV) (window as unknown as { __engine?: Engine }).__engine = e;
     const onHide = () => {
       if (document.visibilityState === "hidden") void saveNow();
