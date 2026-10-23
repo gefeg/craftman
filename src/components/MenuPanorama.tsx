@@ -20,12 +20,34 @@ export function MenuPanorama({ blurred = false }: MenuPanoramaProps) {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const scene = new THREE.Scene();
-    // three order: +x, -x, +y, -y, +z, -z  ← Minecraft: 1 right, 3 left, 4 top, 5 bottom, 2 back, 0 front
-    const cube = new THREE.CubeTextureLoader().load([1, 3, 4, 5, 2, 0].map((i) => `${P}${i}.png`));
-    cube.colorSpace = THREE.SRGBColorSpace;
-    scene.background = cube;
+    // Inside-facing cube built face by face so every edge lines up exactly like Minecraft:
+    // 0 front (-Z), 1 right (+X), 2 back (+Z), 3 left (-X), 4 top, 5 bottom.
+    const loader = new THREE.TextureLoader();
+    const faces: [number, [number, number, number], [number, number, number]][] = [
+      [0, [0, 0, -1], [0, 0, 0]],
+      [1, [1, 0, 0], [0, -Math.PI / 2, 0]],
+      [2, [0, 0, 1], [0, Math.PI, 0]],
+      [3, [-1, 0, 0], [0, Math.PI / 2, 0]],
+      [4, [0, 1, 0], [Math.PI / 2, 0, 0]],
+      [5, [0, -1, 0], [-Math.PI / 2, 0, 0]],
+    ];
+    const geo = new THREE.PlaneGeometry(2.004, 2.004);
+    const disposables: { dispose(): void }[] = [geo];
+    for (const [i, pos, rot] of faces) {
+      const tex = loader.load(`${P}${i}.png`);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      const mat = new THREE.MeshBasicMaterial({ map: tex, depthWrite: false });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(...pos);
+      mesh.rotation.set(...rot);
+      scene.add(mesh);
+      disposables.push(tex, mat);
+    }
+    const cube = { dispose: () => disposables.forEach((d) => d.dispose()) };
 
-    const camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 10);
+    const camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.01, 10);
     camera.rotation.order = "YXZ";
 
     let raf = 0;
