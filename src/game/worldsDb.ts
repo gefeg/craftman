@@ -49,7 +49,11 @@ const DB_NAME = "voxelcraft_db";
 const DB_VERSION = 1;
 const STORE_NAME = "worlds";
 
+// Cached connection so saves can start their transaction synchronously (needed when the tab is closing).
+let dbCache: IDBDatabase | null = null;
+
 function openDb(): Promise<IDBDatabase> {
+  if (dbCache) return Promise.resolve(dbCache);
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
       reject(new Error("IndexedDB is not supported in this environment"));
@@ -62,9 +66,25 @@ function openDb(): Promise<IDBDatabase> {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      dbCache = db;
+      db.onversionchange = () => {
+        db.close();
+        dbCache = null;
+      };
+      db.onclose = () => {
+        dbCache = null;
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
   });
+}
+
+/** Open the worlds database ahead of time so later saves start instantly. */
+export function warmWorldsDb() {
+  void openDb().catch(() => {});
 }
 
 function calculateSize(record: WorldRecord): string {
@@ -117,7 +137,7 @@ export async function getWorld(id: string): Promise<WorldRecord | undefined> {
 export async function saveWorld(world: WorldRecord): Promise<void> {
   try {
     world.size = calculateSize(world);
-    const db = await openDb();
+    const db = dbCache ?? (await openDb());
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);

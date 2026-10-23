@@ -345,18 +345,26 @@ export class Engine {
   }
 
   exportWorldData(): WorldRecord["worldData"] {
+    // A dead player is saved as already respawned so reopening the world never loads a 0-HP body.
+    const dead = this.state.dead;
+    const pos = dead ? this.spawn : this.player.pos;
     return {
-      playerPos: [this.player.pos.x, this.player.pos.y, this.player.pos.z],
+      playerPos: [pos.x, pos.y, pos.z],
       playerYaw: this.yaw,
       playerPitch: this.pitch,
       inventory: [...this.state.slots],
-      hp: this.state.hp,
-      food: this.state.food,
+      hp: dead ? 20 : this.state.hp,
+      food: dead ? 20 : this.state.food,
       time: this.time,
       day: this.dayCount,
       modifiedBlocks: Array.from(this.modifiedBlocksMap.values()),
     };
   }
+
+  /** Text shown on the death screen ("X fue asesinado por Y"). */
+  deathText = "";
+  /** Called right after the player dies (used to autosave). */
+  onDeath?: () => void;
 
   getScreenshot(): string {
     try {
@@ -2126,8 +2134,10 @@ export class Engine {
           s.durability,
         );
     this.state.slots = Array(36).fill(null);
+    this.deathText = text;
     this.safeExitLock();
     this.emit();
+    this.onDeath?.();
   }
   respawn() {
     this.state.dead = false;

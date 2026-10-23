@@ -9,7 +9,7 @@ import { Button } from "./ui/button";
 import { MainMenu } from "./MainMenu";
 import { LoadingScreen } from "./LoadingScreen";
 import { SettingsMenu } from "./SettingsMenu";
-import { saveWorld, createNewWorldRecord, type WorldRecord } from "@/game/worldsDb";
+import { saveWorld, createNewWorldRecord, warmWorldsDb, type WorldRecord } from "@/game/worldsDb";
 import { startMusic, stopAudio, sfx } from "@/game/audio";
 import { getStoredPlayerName } from "@/game/skinStorage";
 import { SERVER_ICONS, getServerIconEmoji, ServerIcon, serverAddress, type JoinInfo } from "./WorldsMenu";
@@ -148,16 +148,45 @@ export function Game() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const addLog = (m: string) => setChat((c) => [...c.slice(-50), { m, t: Date.now() }]);
 
+  const saveRef = useRef<((thumb?: boolean, force?: boolean) => Promise<void>) | null>(null);
+
   useEffect(() => {
     if (appState !== "playing" || !activeWorld) return;
     const canvas = ref.current;
     if (!canvas) return;
     const e = new Engine(canvas, activeWorld.seed, activeWorld);
     let unsub = () => {};
+    let ready = false;
+    let latestThumb = activeWorld.thumbnailDataUrl;
+    // Worlds joined from someone else's server are not stored locally by autosave.
+    const isJoinedServer = !!activeWorld.isServer && activeWorld.serverConfig?.isOwner === false;
+    const saveNow = async (thumb = false, force = false) => {
+      if (!ready || (isJoinedServer && !force)) return;
+      if (thumb) latestThumb = e.getScreenshot() || latestThumb;
+      const record: WorldRecord = {
+        ...activeWorld,
+        lastPlayed: Date.now(),
+        thumbnailDataUrl: latestThumb,
+        worldData: e.exportWorldData(),
+      };
+      await saveWorld(record);
+    };
+    saveRef.current = saveNow;
+    warmWorldsDb();
+    const onHide = () => {
+      if (document.visibilityState === "hidden") void saveNow();
+    };
+    const onPageHide = () => void saveNow();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onPageHide);
+    const autosave = setInterval(() => void saveNow(), 30000);
     e.init().then(() => {
+      ready = true;
       unsub = e.subscribe(setS);
       setEngine(e);
       e.onChatMessage = addLog;
+      e.onDeath = () => void saveNow();
       startMusic();
 
       // If this world is a configured server, immediately start multiplayer hosting!
@@ -181,6 +210,14 @@ export function Game() {
     const iv = setInterval(() => e.emit(), 500);
     return () => {
       clearInterval(iv);
+      clearInterval(autosave);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onPageHide);
+      // Leaving the world any way (back button, menu, reload) still saves it.
+      void saveNow();
+      ready = false;
+      if (saveRef.current === saveNow) saveRef.current = null;
       unsub();
       e.dispose();
       setEngine(null);
@@ -215,16 +252,7 @@ export function Game() {
 
   const handleSaveAndQuit = async () => {
     sfx.click();
-    if (engine && activeWorld) {
-      const thumb = engine.getScreenshot();
-      const worldData = engine.exportWorldData();
-      await saveWorld({
-        ...activeWorld,
-        lastPlayed: Date.now(),
-        thumbnailDataUrl: thumb || activeWorld.thumbnailDataUrl,
-        worldData,
-      });
-    }
+    if (saveRef.current) await saveRef.current(true, true);
     stopAudio();
     if (engine) engine.safeExitLock();
     setAppState("menu");
@@ -468,6 +496,36 @@ export function Game() {
               s={s}
               onClose={() => setShowMultiplayerModal(false)}
             />
+          )}
+
+          {s.dead && !engine?.disconnectReason && (
+            <div className="mc-overlay mc-overlay-dead z-40" role="dialog" aria-label="Has muerto">
+              <h1 className="mc-title text-center">¡Has muerto!</h1>
+              {engine?.deathText && (
+                <p className="text-2xl text-center drop-shadow-[2px_2px_0_#000000]">
+                  {engine.deathText}
+                </p>
+              )}
+              <div className="flex flex-col gap-2.5 mt-4">
+                <Button
+                  variant="ghost"
+                  className="mc-button text-2xl py-2"
+                  onClick={() => {
+                    sfx.click();
+                    engine?.respawn();
+                  }}
+                >
+                  Reaparecer
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="mc-button text-2xl py-2"
+                  onClick={handleSaveAndQuit}
+                >
+                  Menú principal
+                </Button>
+              </div>
+            </div>
           )}
 
           {engine?.disconnectReason && (

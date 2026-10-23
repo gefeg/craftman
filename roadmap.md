@@ -5,3 +5,6 @@
 - [x] Clean server list: icon, IP:port, green "Iniciar servidor" only
 - [x] Minecraft-like combat with real hit / hurt / death sounds
 - [x] PvP combat between players (victim-validated hits, knockback, crits, sweep, death messages)
+- [x] Death screen (Reaparecer / Menú principal)
+- [x] Autosave worlds (every 30s, on death, tab hide/close, leaving the world)
+- [ ] Fix seams in the home screen panorama (waiting for user to say continue)
