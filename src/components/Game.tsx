@@ -148,16 +148,44 @@ export function Game() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const addLog = (m: string) => setChat((c) => [...c.slice(-50), { m, t: Date.now() }]);
 
+  const saveRef = useRef<((thumb?: boolean, force?: boolean) => Promise<void>) | null>(null);
+
   useEffect(() => {
     if (appState !== "playing" || !activeWorld) return;
     const canvas = ref.current;
     if (!canvas) return;
     const e = new Engine(canvas, activeWorld.seed, activeWorld);
     let unsub = () => {};
+    let ready = false;
+    let latestThumb = activeWorld.thumbnailDataUrl;
+    // Worlds joined from someone else's server are not stored locally by autosave.
+    const isJoinedServer = !!activeWorld.isServer && activeWorld.serverConfig?.isOwner === false;
+    const saveNow = async (thumb = false, force = false) => {
+      if (!ready || (isJoinedServer && !force)) return;
+      if (thumb) latestThumb = e.getScreenshot() || latestThumb;
+      const record: WorldRecord = {
+        ...activeWorld,
+        lastPlayed: Date.now(),
+        thumbnailDataUrl: latestThumb,
+        worldData: e.exportWorldData(),
+      };
+      await saveWorld(record);
+    };
+    saveRef.current = saveNow;
+    const onHide = () => {
+      if (document.visibilityState === "hidden") void saveNow();
+    };
+    const onPageHide = () => void saveNow();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onPageHide);
+    const autosave = setInterval(() => void saveNow(), 30000);
     e.init().then(() => {
+      ready = true;
       unsub = e.subscribe(setS);
       setEngine(e);
       e.onChatMessage = addLog;
+      e.onDeath = () => void saveNow();
       startMusic();
 
       // If this world is a configured server, immediately start multiplayer hosting!
@@ -181,6 +209,14 @@ export function Game() {
     const iv = setInterval(() => e.emit(), 500);
     return () => {
       clearInterval(iv);
+      clearInterval(autosave);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onPageHide);
+      // Leaving the world any way (back button, menu, reload) still saves it.
+      void saveNow();
+      ready = false;
+      if (saveRef.current === saveNow) saveRef.current = null;
       unsub();
       e.dispose();
       setEngine(null);
@@ -215,16 +251,7 @@ export function Game() {
 
   const handleSaveAndQuit = async () => {
     sfx.click();
-    if (engine && activeWorld) {
-      const thumb = engine.getScreenshot();
-      const worldData = engine.exportWorldData();
-      await saveWorld({
-        ...activeWorld,
-        lastPlayed: Date.now(),
-        thumbnailDataUrl: thumb || activeWorld.thumbnailDataUrl,
-        worldData,
-      });
-    }
+    if (saveRef.current) await saveRef.current(true, true);
     stopAudio();
     if (engine) engine.safeExitLock();
     setAppState("menu");
