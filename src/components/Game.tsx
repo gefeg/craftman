@@ -497,6 +497,39 @@ export function Game() {
             />
           )}
 
+          {s.dead && !engine?.disconnectReason && (
+            <div className="mc-overlay mc-overlay-dead z-40" role="dialog" aria-label="Has muerto">
+              <h1 className="mc-title text-center">¡Has muerto!</h1>
+              {engine?.deathText && (
+                <p className="text-2xl text-center drop-shadow-[2px_2px_0_#000000]">
+                  {engine.deathText}
+                </p>
+              )}
+              <p className="text-xl opacity-90 drop-shadow-[2px_2px_0_#000000]">
+                Puntuación: <span className="text-yellow-300">0</span>
+              </p>
+              <div className="flex flex-col gap-2.5 mt-4">
+                <Button
+                  variant="ghost"
+                  className="mc-button text-2xl py-2"
+                  onClick={() => {
+                    sfx.click();
+                    engine?.respawn();
+                  }}
+                >
+                  Reaparecer
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="mc-button text-2xl py-2"
+                  onClick={handleSaveAndQuit}
+                >
+                  Menú principal
+                </Button>
+              </div>
+            </div>
+          )}
+
           {engine?.disconnectReason && (
             <div className="mc-overlay mc-overlay-dead z-50">
               <div
